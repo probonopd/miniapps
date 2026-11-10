@@ -1,0 +1,30 @@
+# Remote control over MQTT with TLS (optional). Copy this file to /sdcard/mqtt.conf on the projector and restart the
+# TV app. At the first start the app moves it into its private storage and deletes it from the card (it holds the
+# password). Without the file nothing of this runs.
+#
+# Works with HiveMQ Cloud (host=<cluster>.s1.eu.hivemq.cloud), EMQX Cloud and any other broker with TLS.
+host=your-cluster.s1.eu.hivemq.cloud
+port=8883
+user=tv-wohnzimmer
+password=change-me
+# All topics of this TV are below this one. Give the user an ACL for this topic only.
+topic=tv/wohnzimmer
+# Not needed for brokers with a public certificate (Let's Encrypt, DigiCert, ...). A PEM file for a private CA:
+#cafile=/sdcard/ca.pem
+# Playing any address: on by default. Shell commands: off unless you say on (they run as the app's user, 30 s at most).
+#url=off
+#shell=on
+# Video calls (cmd/jitsi): on by default. A room name is opened on jitsi-server; a full address
+# (https://meet.ffmuc.net/room) on the server it names, as far as jitsi-allowed lets it: * for every host name
+# (the default) or a comma separated list of hosts.
+#jitsi=off
+#jitsi-server=meet.jit.si
+#jitsi-allowed=*
+# Spoken text over MQTT (cmd/say, cmd/say-prefetch) and its Home Assistant entities: on by default.
+#speech=off
+# Home Assistant discovery (on by default): the TV announces itself, no configuration needed there.
+#name=Wohnzimmer TV
+#discovery=off
+#discovery-prefix=homeassistant
+# Plain MQTT (tls=off) is accepted for a broker in the local network only.
+#tls=off

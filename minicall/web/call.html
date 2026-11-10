@@ -1,0 +1,256 @@
+<!doctype html>
+<!--
+  Copyright (c) 2026 Simon Peter
+
+  SPDX-License-Identifier: BSD-2-Clause
+
+  Video call with a minicall device, from any current browser, without an account
+  or an app. The call is set up over the device's MQTT broker; everything this page
+  needs is in the part of its address after "#", which browsers never send to the
+  server that hosts the page:
+
+    call.html#host=BROKER&user=USER&pass=PASSWORD&topic=TOPIC&name=YOUR_NAME
+    (optional: port=8884, path=/mqtt, tls=off for a broker in the local network,
+     stun=stun.l.google.com:19302, test=1 for a test picture instead of the camera)
+
+  The broker user should be allowed TOPIC/# only.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video call</title>
+<style>
+	:root { --bg: #101418; --fg: #eceff1; --dim: #90a4ae; --green: #2e7d32; --red: #d32f2f; }
+	html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+		font: 18px/1.4 system-ui, sans-serif; }
+	#remote { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+	#self { position: fixed; top: 12px; right: 12px; width: 28vw; max-width: 220px; border-radius: 8px;
+		transform: scaleX(-1); background: #000; }
+	#panel { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; display: flex; flex-direction: column;
+		align-items: center; gap: 12px; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+	#status { font-size: 22px; text-align: center; text-shadow: 0 0 4px #000; }
+	.buttons { display: flex; gap: 16px; }
+	button { font: inherit; font-size: 24px; color: #fff; border: 0; border-radius: 40px; padding: 18px 40px;
+		min-width: 180px; cursor: pointer; }
+	button:disabled { opacity: .4; cursor: default; }
+	.call { background: var(--green); }
+	.end { background: var(--red); }
+	.devices { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: center; font-size: 15px;
+		color: var(--dim); }
+	select { font: inherit; max-width: 42vw; background: #263238; color: var(--fg); border: 0; border-radius: 6px;
+		padding: 4px 6px; }
+	[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<video id="remote" autoplay playsinline></video>
+<video id="self" autoplay playsinline muted hidden></video>
+<div id="panel">
+	<div id="status">Connecting…</div>
+	<div class="buttons">
+		<button id="call" class="call" disabled>Call</button>
+		<button id="accept" class="call" hidden>Accept</button>
+		<button id="hangup" class="end" hidden>Hang up</button>
+		<button id="decline" class="end" hidden>Decline</button>
+	</div>
+	<div class="devices" id="devices">
+		<label>Camera <select id="cam"></select></label>
+		<label>Microphone <select id="mic"></select></label>
+	</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js"></script>
+<script>
+'use strict';
+const prm = new URLSearchParams(location.hash.slice(1));
+const cfg = {
+	host: prm.get('host'), user: prm.get('user') || undefined, pass: prm.get('pass') || undefined,
+	topic: prm.get('topic'), name: prm.get('name') || 'Web',
+	tls: prm.get('tls') !== 'off', path: prm.get('path') || '/mqtt',
+	stun: prm.get('stun') || 'stun.l.google.com:19302',
+};
+cfg.port = prm.get('port') || (cfg.tls ? 8884 : 8083);
+const $ = id => document.getElementById(id);
+const show = (...ids) => ['call', 'accept', 'hangup', 'decline'].forEach(b => $(b).hidden = !ids.includes(b));
+const say = t => $('status').textContent = t;
+
+let mq, pc, local, callId, device = 'the device', online = false, ringing = null;
+
+function idle(text) {
+	if (pc) pc.close();
+	pc = null;
+	callId = null;
+	if (local) local.getTracks().forEach(t => t.stop());
+	local = null;
+	$('remote').srcObject = null;
+	$('self').hidden = true;
+	stopRing();
+	show('call');
+	$('call').disabled = !online;
+	say(text || (online ? device + ' is online.' : device + ' is offline.'));
+}
+
+// A ring tone without a sound file: two short tones every 2 s.
+function startRing() {
+	const ac = new AudioContext();
+	const beep = t => { const o = ac.createOscillator(), g = ac.createGain();
+		o.frequency.value = 440; g.gain.value = .2; o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .4); };
+	const tick = () => { beep(ac.currentTime); beep(ac.currentTime + .6); };
+	tick();
+	ringing = { ac, timer: setInterval(tick, 2000) };
+}
+
+function stopRing() {
+	if (!ringing) return;
+	clearInterval(ringing.timer);
+	ringing.ac.close();
+	ringing = null;
+}
+
+// Camera and microphone to use, remembered in this browser. Their names are only known once the browser
+// was allowed to use them; until then they are listed as numbered devices.
+async function listDevices() {
+	if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+	const devs = await navigator.mediaDevices.enumerateDevices();
+	for (const [id, kind, what] of [['cam', 'videoinput', 'Camera'], ['mic', 'audioinput', 'Microphone']]) {
+		const sel = $(id);
+		let saved = '';
+		try { saved = localStorage.getItem('minicall-' + id) || ''; } catch (e) { saved = ''; }
+		const want = sel.options.length ? sel.value : saved;
+		sel.textContent = '';
+		sel.add(new Option('Default', ''));
+		devs.filter(d => d.kind === kind).forEach((d, i) => sel.add(new Option(d.label || what + ' ' + (i + 1), d.deviceId)));
+		sel.add(new Option('None', 'none'));
+		sel.value = [...sel.options].some(o => o.value === want) ? want : '';
+	}
+}
+
+for (const id of ['cam', 'mic']) {
+	$(id).addEventListener('change', () => { try { localStorage.setItem('minicall-' + id, $(id).value); } catch (e) {} });
+}
+if (navigator.mediaDevices) navigator.mediaDevices.addEventListener('devicechange', listDevices);
+listDevices();
+
+// test=1 in the link: a moving picture and a tone instead of camera and microphone.
+function testStream() {
+	const c = document.createElement('canvas'); c.width = 640; c.height = 480;
+	const g = c.getContext('2d'); let n = 0;
+	setInterval(() => { g.fillStyle = `hsl(${n++ % 360},70%,45%)`; g.fillRect(0, 0, 640, 480);
+		g.fillStyle = '#fff'; g.font = '96px sans-serif'; g.fillText(cfg.name + ' ' + n, 40, 280); }, 33);
+	const ac = new AudioContext(), o = ac.createOscillator(), d = ac.createMediaStreamDestination();
+	o.frequency.value = 660; o.connect(d); o.start();
+	return new MediaStream([...c.captureStream(30).getVideoTracks(), ...d.stream.getAudioTracks()]);
+}
+
+async function call() {
+	stopRing();
+	show('hangup');
+	say('Calling ' + device + '…');
+	let note = '';
+	if (prm.get('test')) {
+		local = testStream();
+	} else {
+		// What was picked; each device can also fail on its own (a microphone the sound system cannot open,
+		// a camera in use), so the call goes ahead with what works.
+		const pick = (id, base) => $(id).value === 'none' ? false
+			: $(id).value ? { ...base, deviceId: { exact: $(id).value } } : base;
+		const audio = pick('mic', { echoCancellation: true, noiseSuppression: true });
+		const video = pick('cam', { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } });
+		const attempts = [
+			[{ audio, video }, ''],
+			[{ audio: false, video }, 'No microphone: you are seen, not heard.'],
+			[{ audio, video: false }, 'No camera: you are heard, not seen.'],
+		].filter(([c]) => c.audio || c.video);
+		let error = '';
+		for (const [c, text] of attempts) {
+			try {
+				local = await navigator.mediaDevices.getUserMedia(c);
+				note = text && (text + ' (' + error + ')');
+				break;
+			} catch (e) {
+				error = error || e.message;
+			}
+		}
+		if (!local) {
+			local = new MediaStream();
+			note = error ? 'No camera or microphone (' + error + '): you can see and hear, not be seen or heard.' : '';
+		}
+		listDevices();
+	}
+	if (note) say(note);
+	$('self').srcObject = local;
+	$('self').hidden = local.getVideoTracks().length === 0;
+	pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:' + cfg.stun }] });
+	local.getTracks().forEach(t => pc.addTrack(t, local));
+	for (const kind of ['audio', 'video']) {
+		if (!local.getTracks().some(t => t.kind === kind)) pc.addTransceiver(kind, { direction: 'recvonly' });
+	}
+	pc.ontrack = e => { $('remote').srcObject = e.streams[0] || new MediaStream([e.track]); };
+	pc.onconnectionstatechange = () => {
+		if (!pc) return;
+		if (pc.connectionState === 'connected') say(note);
+		if (pc.connectionState === 'failed') hangup('The connection failed.');
+	};
+	await pc.setLocalDescription(await pc.createOffer());
+	// The device takes the offer with all candidates at once, there is no trickling.
+	await new Promise(r => {
+		if (pc.iceGatheringState === 'complete') return r();
+		pc.addEventListener('icegatheringstatechange', () => pc.iceGatheringState === 'complete' && r());
+		setTimeout(r, 4000);
+	});
+	if (!pc) return;
+	callId = Math.random().toString(36).slice(2, 12);
+	mq.subscribe([cfg.topic + '/answer/' + callId, cfg.topic + '/bye/' + callId]);
+	mq.publish(cfg.topic + '/offer', JSON.stringify({ id: callId, name: cfg.name, type: 'offer',
+		sdp: pc.localDescription.sdp }), { qos: 1 });
+	setTimeout(() => { if (pc && pc.connectionState !== 'connected' && !pc.remoteDescription) hangup('No answer.'); }, 30000);
+}
+
+function hangup(text) {
+	if (callId) mq.publish(cfg.topic + '/bye/' + callId, '{}', { qos: 1 });
+	idle(text);
+}
+
+async function onMessage(topic, payload) {
+	const sub = topic.slice(cfg.topic.length + 1);
+	let m = {};
+	try { m = JSON.parse(payload.toString() || '{}'); } catch (e) { return; }
+	if (sub === 'status') {
+		online = !!m.online;
+		if (m.name) device = m.name;
+		if (!pc && !ringing) idle();
+	} else if (sub === 'answer/' + callId && pc) {
+		if (m.error === 'busy') return idle(device + ' is busy.');
+		if (m.error) return idle(device + ' did not take the call (' + m.error + ').');
+		await pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
+		say('Connecting…');
+	} else if (sub === 'bye/' + callId) {
+		idle(device + ' hung up.');
+	} else if (sub === 'ring' && m.to && m.to.toLowerCase() === cfg.name.toLowerCase() && !pc) {
+		device = m.from || device;
+		show('accept', 'decline');
+		say(device + ' is calling…');
+		startRing();
+	}
+}
+
+// The settings are read once: a changed link must start the page anew.
+window.addEventListener('hashchange', () => location.reload());
+$('call').onclick = call;
+$('accept').onclick = call;
+$('decline').onclick = () => idle();
+$('hangup').onclick = () => hangup();
+
+if (!cfg.host || !cfg.topic) {
+	say('This link is incomplete: host and topic are missing.');
+} else {
+	mq = mqtt.connect((cfg.tls ? 'wss://' : 'ws://') + cfg.host + ':' + cfg.port + cfg.path,
+		{ username: cfg.user, password: cfg.pass, reconnectPeriod: 3000, clean: true });
+	mq.on('connect', () => mq.subscribe([cfg.topic + '/status', cfg.topic + '/ring']));
+	mq.on('message', onMessage);
+	mq.on('error', e => say('Broker: ' + e.message));
+	mq.on('offline', () => { online = false; if (!pc) idle(); });
+}
+</script>
+</body>
+</html>

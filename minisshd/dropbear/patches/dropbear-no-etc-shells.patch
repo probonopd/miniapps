@@ -1,0 +1,15 @@
+--- a/src/svr-auth.c	2024-10-22 16:30:00.000000000 +0200
++++ b/src/svr-auth.c	2026-11-10 21:14:00.599026383 +0100
+@@ -316,6 +316,12 @@
+ 	/* check the shell is valid. If /etc/shells doesn't exist, getusershell()
+ 	 * should return some standard shells like "/bin/sh" and "/bin/csh" (this
+ 	 * is platform-specific) */
++	/* Android has no /etc/shells, and this build's only user is the
++	 * synthetic identity from fill_passwd() with a known-good shell -
++	 * skip the lookup instead of rejecting every login. */
++	if (strcmp(usershell, "/system/bin/sh") == 0) {
++		goto goodshell;
++	}
+ 	setusershell();
+ 	while ((listshell = getusershell()) != NULL) {
+ 		TRACE(("test shell is '%s'", listshell))

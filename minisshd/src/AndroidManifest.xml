@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.minisshd">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- For mDNS/zeroconf announcement of _ssh._tcp/_sftp-ssh._tcp via NsdManager. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <!-- So the SFTP/SSH login lands somewhere an actual file transfer is useful (shared
+         storage - Download, Music, Pictures, ... - not just this app's own sandbox); granted
+         at install time via adb, not a runtime prompt (there is no UI to show one in). -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <!-- The dropbear/dropbearkey binaries travel as lib*.so files so Android extracts them (with
+         the executable bit) at install time; they are run as programs, not loaded as libraries. -->
+    <application android:label="minisshd" android:extractNativeLibs="true" android:allowBackup="false">
+        <service android:name=".MinisshdService" android:exported="false"/>
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

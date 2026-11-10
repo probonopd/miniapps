@@ -1,0 +1,48 @@
+# minicall settings. Copy this file to /sdcard/minicall.conf on the device and start the app (or reboot):
+# the app takes it into its private storage and deletes it from the card, because it holds passwords.
+
+# The name shown to the other side.
+display-name=Wohnzimmer
+
+# --- Calls with SIP apps (Linphone and others). Optional.
+# A free account, for example from https://subscribe.linphone.org. Without one the device can only be
+# called by address in the local network (sip:minicall@<its address>).
+#sip-user=wohnzimmer
+#sip-password=change-me
+#sip-domain=sip.linphone.org
+#sip-transport=udp            # udp, tcp or tls
+
+# --- Calls from the web page web/call.html, over an MQTT broker (no SIP account at all). Optional.
+# A broker with TLS for MQTT and for WebSockets (the page), for example HiveMQ Cloud (free tier).
+# Give this device and the page their own broker users, both limited to mqtt-topic/# .
+#mqtt-host=your-cluster.s1.eu.hivemq.cloud
+#mqtt-port=8883
+#mqtt-user=wohnzimmer-device
+#mqtt-password=change-me
+#mqtt-topic=minicall/wohnzimmer
+#mqtt-tls=off                 # only for a broker in the local network
+
+# --- Contacts: a button each on the device; only they are answered automatically.
+# sip: a SIP address. web: the name= of a web page link.
+#contact=Oma=sip:oma@sip.linphone.org
+#contact=Paul=web:Paul
+
+# Who is answered without anybody touching the device.
+#auto-answer=contacts         # SIP callers: contacts or off
+#web-auto-answer=contacts     # web callers: contacts, all (anyone with the page's broker login) or off
+
+# STUN server for finding the public address (several stun= lines possible; the first one is used).
+#stun=stun.l.google.com:19302
+
+# Media, coded by the device's hardware (H.264). 16:9; both sides need sizes divisible by 16.
+#video-size=auto             # the screen's shape, at most 1280x720; or WIDTHxHEIGHT
+#video-fps=30
+#video-bitrate=0              # 0: from size and frame rate
+# Sound. auto: phones (devices with telephony) use call mode with the loudspeaker and the voice call microphone
+# (source 7), so that their echo canceller works; other devices (Echo Show) the media stream and capture source 6
+# (the Echo Show's echo-cancelled stream; its call path is silent).
+#audio-mode=auto              # auto, call or media
+#mic-source=6
+# Gain: auto keeps speech at a steady level (and never raises noise), or a fixed number of dB.
+#mic-gain-db=auto
+#speaker-gain-db=auto

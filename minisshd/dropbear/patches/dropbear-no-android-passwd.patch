@@ -1,0 +1,30 @@
+--- a/src/common-session.c	2024-10-22 16:30:00.000000000 +0200
++++ b/src/common-session.c	2026-11-10 22:42:41.580173258 +0100
+@@ -643,6 +643,27 @@
+ 
+ 	pw = getpwnam(username);
+ 	if (!pw) {
++		/* Statically linked against glibc, running under Android's bionic:
++		 * getpwnam() can't see bionic's built-in passwd table, so it always
++		 * returns NULL here. This binary only ever runs as the sole admin
++		 * account on a single-purpose private-LAN device, so synthesize an
++		 * identity with a blank password instead of failing the login
++		 * outright. checkusername()'s own uid==pw_uid check requires this
++		 * to match whatever uid the dropbear process itself is running
++		 * as (no setuid/escalation happens here), so use that rather than
++		 * a hardcoded root - synthesizing uid 0 here would just make every
++		 * login fail that check when the process isn't actually root. */
++		ses.authstate.pw_uid = getuid();
++		ses.authstate.pw_gid = getgid();
++		ses.authstate.pw_name = m_strdup(username);
++		/* Shared storage (Download/Music/Pictures/...), not /data/local/tmp: that one looks
++		 * writable (traversable by anyone) but is actually shell:shell drwxrwx--x, so a
++		 * regular app uid can list it but not write - a real SFTP upload failed on exactly
++		 * that before this was caught. Shared storage needs WRITE_EXTERNAL_STORAGE granted
++		 * (see the app's AndroidManifest.xml) for this uid to join the sdcard_rw group. */
++		ses.authstate.pw_dir = m_strdup("/storage/emulated/0");
++		ses.authstate.pw_shell = m_strdup("/system/bin/sh");
++		ses.authstate.pw_passwd = m_strdup("");
+ 		return;
+ 	}
+ 	ses.authstate.pw_uid = pw->pw_uid;

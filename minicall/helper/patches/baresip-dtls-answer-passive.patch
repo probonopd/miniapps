@@ -1,0 +1,27 @@
+--- a/modules/dtls_srtp/dtls_srtp.c
++++ b/modules/dtls_srtp/dtls_srtp.c
+@@ -182,9 +182,12 @@
+ 	sess->errorh  = errorh;
+ 	sess->arg     = arg;
+ 
+-	/* RFC 4145 */
++	/* RFC 4145. The answerer is passive: the offerer then starts DTLS
++	 * when it has the answer. An active answerer starts at once, while the
++	 * answer may still be on its way through the signaling; the offerer
++	 * drops that hello, and with it the call could hang. */
+ 	err = sdp_session_set_lattr(sdp, true, "setup",
+-				    offerer ? "actpass" : "active");
++				    offerer ? "actpass" : "passive");
+ 	if (err)
+ 		goto out;
+ 
+@@ -462,7 +465,8 @@
+ 	if (setup) {
+ 		enum setup rsetup = setup_decode(setup);
+ 
+-		st->active = rsetup != SETUP_ACTIVE;
++		/* actpass offered to us: we answered passive */
++		st->active = rsetup == SETUP_PASSIVE;
+ 
+ 		err = media_start(st, st->sdpm, raddr_rtp, raddr_rtcp);
+ 		if (err)

@@ -1,0 +1,19 @@
+--- a/src/mediatrack.c
++++ b/src/mediatrack.c
+@@ -148,6 +148,16 @@
+ 	}
+ 
+ 	if (dir & SDP_RECVONLY) {
++		/* The payload type handler only follows changes of the
++		 * payload type, so without this no frame is ever decoded. */
++		err = video_decoder_set(vid, vc, fmt->pt, fmt->rparams);
++		if (err) {
++			warning("mediatrack: start_video:"
++				" video_decoder_set error: %m\n",
++				err);
++			return err;
++		}
++
+ 		err = video_start_display(vid, "webrtc");
+ 		if (err) {
+ 			warning("mediatrack: start_video:"

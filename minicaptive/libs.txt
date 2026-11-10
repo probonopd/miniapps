@@ -1,0 +1,4 @@
+# url-base|path (all downloads of the build; sha256 pinned in libs.sha256)
+G|com/android/tools/r8/9.5.28/r8-9.5.28.jar
+M|org/robolectric/android-all/14-robolectric-10818077/android-all-14-robolectric-10818077.jar
+M|org/jsoup/jsoup/1.17.2/jsoup-1.17.2.jar

@@ -1,0 +1,10 @@
+# Build outputs (build/ also holds the signing key, which must never be committed)
+build/
+minitv*.apk
+*.pem
+*.dex
+__pycache__/
+# Generated voice samples
+tts-samples/
+# The household's own channel list; make-playlist.py writes one
+playlist.m3u

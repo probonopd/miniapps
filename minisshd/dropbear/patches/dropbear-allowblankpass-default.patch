@@ -1,0 +1,14 @@
+--- a/src/svr-runopts.c	2024-10-22 16:30:00.000000000 +0200
++++ b/src/svr-runopts.c	2026-11-10 20:25:38.275725608 +0100
+@@ -165,7 +165,10 @@
+ #endif
+ 	svr_opts.noauthpass = 0;
+ 	svr_opts.norootpass = 0;
+-	svr_opts.allowblankpass = 0;
++	/* -B is normally only compiled in alongside password/PAM auth (which
++	 * need crypt(), unavailable here); this build's sole auth path is the
++	 * blank-password "none" bypass, so it is always on, not flag-gated. */
++	svr_opts.allowblankpass = 1;
+ 	svr_opts.multiauthmethod = 0;
+ 	svr_opts.maxauthtries = MAX_AUTH_TRIES;
+ 	svr_opts.inetdmode = 0;

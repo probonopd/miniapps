@@ -1,0 +1,148 @@
+--- a/src/net/linux/addrs.c
++++ b/src/net/linux/addrs.c
+@@ -27,6 +27,7 @@
+ struct iff_up_e {
+ 	struct le le;
+ 	uint32_t ifi_index;
++	char name[IF_NAMESIZE];
+ };
+ 
+ 
+@@ -78,6 +79,17 @@
+ 
+ 		e->ifi_index = ifi->ifi_index;
+ 
++		/* The name comes with the link message: if_indextoname()
++		 * needs the SIOCGIFNAME ioctl, which Android's SELinux
++		 * policy denies to apps, and then no address was found. */
++		int alen = (int)IFLA_PAYLOAD(nlh);
++		for (struct rtattr *rta = IFLA_RTA(ifi); RTA_OK(rta, alen);
++		     rta = RTA_NEXT(rta, alen)) {
++			if (rta->rta_type == IFLA_IFNAME)
++				str_ncpy(e->name, RTA_DATA(rta),
++					 sizeof(e->name));
++		}
++
+ 		list_append(iff_up_l, &e->le, e);
+ 	}
+ 
+@@ -86,15 +98,15 @@
+ 
+ 
+ static int parse_msg_addr(struct nlmsghdr *msg, ssize_t len, net_ifaddr_h *ifh,
+-			  struct list *iff_up_l, void *arg)
++			  struct list *iff_up_l, bool links, void *arg)
+ {
+ 	struct nlmsghdr *nlh;
+ 	for (nlh = msg; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
+ 		struct sa sa;
+ 		uint32_t flags;
+-		bool iff_up = false;
++		const char *if_name = NULL;
++		char label[IF_NAMESIZE];
+ 		void *addr;
+-		char if_name[IF_NAMESIZE];
+ 
+ 		if (nlh->nlmsg_type == NLMSG_DONE) {
+ 			return 0;
+@@ -118,12 +130,25 @@
+ 		{
+ 			struct iff_up_e *e = le->data;
+ 			if (ifa->ifa_index == e->ifi_index) {
+-				iff_up = true;
++				if_name = e->name;
+ 				break;
+ 			}
+ 		}
+ 
+-		if (!iff_up)
++		/* Without the link list (Android 11 and newer refuse it to
++		 * apps) the address carries the only name there is: the
++		 * label of an IPv4 address, else the interface index. */
++		if (!links) {
++			if (rta_tb[IFA_LABEL])
++				str_ncpy(label, RTA_DATA(rta_tb[IFA_LABEL]),
++					 sizeof(label));
++			else
++				re_snprintf(label, sizeof(label), "if%u",
++					    ifa->ifa_index);
++			if_name = label;
++		}
++
++		if (!if_name || !if_name[0])
+ 			continue;
+ 
+ 		if (rta_tb[IFA_FLAGS] && ifa->ifa_family == AF_INET6) {
+@@ -150,9 +175,6 @@
+ 		else
+ 			continue;
+ 
+-		if (!if_indextoname(ifa->ifa_index, if_name))
+-			continue;
+-
+ 		if (ifh(if_name, &sa, arg))
+ 			return 0;
+ 	}
+@@ -167,6 +189,7 @@
+ 	re_sock_t sock;
+ 	ssize_t len;
+ 	struct list iff_up_l = LIST_INIT;
++	bool links = true;
+ 
+ 	struct {
+ 		struct nlmsghdr nlh;
+@@ -201,11 +224,17 @@
+ 
+ 	if (send(sock, &req, req.nlh.nlmsg_len, 0) < 0) {
+ 		err = errno;
+-		DEBUG_WARNING("GETLINK send failed %m\n", err);
+-		goto out;
++		if (err != EACCES) {
++			DEBUG_WARNING("GETLINK send failed %m\n", err);
++			goto out;
++		}
++		/* SELinux on Android 11 and newer denies the link list to
++		 * apps (nlmsg_readpriv); the addresses are still allowed. */
++		links = false;
++		err = 0;
+ 	}
+ 
+-	while ((len = recv(sock, buffer, RE_NETLINK_BUFSZ, 0)) > 0) {
++	while (links && (len = recv(sock, buffer, RE_NETLINK_BUFSZ, 0)) > 0) {
+ 		err = parse_msg_link((struct nlmsghdr *)buffer, len,
+ 				     &iff_up_l);
+ 		if (err != EALREADY)
+@@ -214,7 +243,7 @@
+ 	if (err)
+ 		goto out;
+ 
+-	if (len < 0) {
++	if (links && len < 0) {
+ 		err = errno;
+ 		DEBUG_WARNING("GETLINK recv failed %m\n", err);
+ 		goto out;
+@@ -234,7 +263,7 @@
+ 
+ 	while ((len = recv(sock, buffer, RE_NETLINK_BUFSZ, 0)) > 0) {
+ 		err = (parse_msg_addr((struct nlmsghdr *)buffer, len, ifh,
+-				      &iff_up_l, arg));
++				      &iff_up_l, links, arg));
+ 		if (err != EALREADY)
+ 			break;
+ 	}
+--- a/src/net/linux/macros.h
++++ b/src/net/linux/macros.h
+@@ -12,3 +12,13 @@
+ #undef IFA_RTA
+ #define IFA_RTA(r)                                                            \
+ 	((void *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ifaddrmsg))))
++#undef IFLA_RTA
++#define IFLA_RTA(r)                                                           \
++	((void *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ifinfomsg))))
++/* Callers pass signed and unsigned lengths; the system macro compares the
++ * u32 nlmsg_len with them directly, a sign mismatch where ssize_t is int. */
++#undef NLMSG_OK
++#define NLMSG_OK(nlh, len)                                                    \
++	((len) > 0 && (size_t)(len) >= sizeof(struct nlmsghdr) &&            \
++	 (nlh)->nlmsg_len >= sizeof(struct nlmsghdr) &&                       \
++	 (size_t)(nlh)->nlmsg_len <= (size_t)(len))

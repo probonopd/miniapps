@@ -1,0 +1,160 @@
+--- a/modules/webrtc_aec/aec.cpp
++++ b/modules/webrtc_aec/aec.cpp
+@@ -32,6 +32,8 @@
+ using namespace webrtc;
+ 
+ static bool webrtc_aec_extended_filter;
++static char webrtc_ns_level[16] = "high";
++static double webrtc_fixed_gain_db;
+ 
+ static void aec_destructor(void *arg)
+ {
+@@ -99,13 +101,34 @@
+ 		goto out;
+ 	}
+ 
++	/* What WebRTC clients use for a conversation: echo canceller
++	 * (AEC3), high-pass filter (rumble, handling noise), noise
++	 * suppression that keeps speech, and AGC2, whose voice detector only
++	 * raises speech and caps the noise left in the output. */
++	processing.high_pass_filter.enabled = true;
+ 	processing.echo_canceller.enabled = true;
+ 	processing.echo_canceller.mobile_mode = false;
+-	processing.gain_controller1.enabled = true;
+-	processing.gain_controller1.mode =
+-		AudioProcessing::Config::GainController1::kAdaptiveDigital;
++	processing.noise_suppression.enabled =
++		0 != str_casecmp(webrtc_ns_level, "off");
++	processing.noise_suppression.level =
++		!str_casecmp(webrtc_ns_level, "low") ?
++		AudioProcessing::Config::NoiseSuppression::kLow :
++		!str_casecmp(webrtc_ns_level, "moderate") ?
++		AudioProcessing::Config::NoiseSuppression::kModerate :
++		!str_casecmp(webrtc_ns_level, "veryhigh") ?
++		AudioProcessing::Config::NoiseSuppression::kVeryHigh :
++		AudioProcessing::Config::NoiseSuppression::kHigh;
++	processing.gain_controller1.enabled = false;
++	processing.gain_controller2.enabled = true;
++	processing.gain_controller2.fixed_digital.gain_db =
++		(float)webrtc_fixed_gain_db;
++	processing.gain_controller2.adaptive_digital.enabled = true;
+ 	aec->inst->ApplyConfig(processing);
+ 
++	info("webrtc_aec: echo canceller, high-pass, noise suppression %s,"
++	     " gain control (fixed %d dB, adaptive)\n",
++	     webrtc_ns_level, (int)webrtc_fixed_gain_db);
++
+  out:
+ 	if (err)
+ 		mem_deref(aec);
+@@ -137,6 +160,10 @@
+ 		"webrtc_aec_extended_filter",
+ 		&webrtc_aec_extended_filter
+ 	);
++	(void)conf_get_str(conf, "webrtc_ns_level", webrtc_ns_level,
++			   sizeof(webrtc_ns_level));
++	(void)conf_get_float(conf, "webrtc_fixed_gain_db",
++			     &webrtc_fixed_gain_db);
+ 
+ 	return 0;
+ }
+--- a/modules/webrtc_aec/encode.cpp
++++ b/modules/webrtc_aec/encode.cpp
+@@ -18,6 +18,8 @@
+ 	struct aufilt_enc_st af;  /* inheritance */
+ 
+ 	struct aec *aec;
++	uint8_t ch;       /* channels of the frames, the processing is mono */
++	float *mono;
+ };
+ 
+ 
+@@ -27,6 +29,7 @@
+ 
+ 	list_unlink(&st->af.le);
+ 	mem_deref(st->aec);
++	mem_deref(st->mono);
+ }
+ 
+ 
+@@ -59,9 +62,27 @@
+ 	if (!st)
+ 		return ENOMEM;
+ 
+-	err = webrtc_aec_alloc(&st->aec, ctx, prm);
+-	if (err)
+-		goto out;
++	/* Opus is always two channels in RTP, while the microphone and the
++	 * far end's sound (the player is mono) are one: the processing runs
++	 * on the mono mix, and the result goes to every channel. */
++	{
++		struct aufilt_prm mprm = *prm;
++
++		st->ch = prm->ch;
++		mprm.ch = 1;
++		err = webrtc_aec_alloc(&st->aec, ctx, &mprm);
++		if (err)
++			goto out;
++	}
++
++	if (st->ch > 1) {
++		st->mono = (float *)mem_alloc(st->aec->blocksize *
++					      sizeof(float), NULL);
++		if (!st->mono) {
++			err = ENOMEM;
++			goto out;
++		}
++	}
+ 
+  out:
+ 	if (err)
+@@ -77,19 +98,32 @@
+ {
+ 	struct aec *aec = enc->aec;
+ 	StreamConfig config(aec->srate, aec->ch);
++	size_t block = aec->blocksize * enc->ch;
+ 	size_t i;
+ 	int r;
+ 	int err = 0;
+ 
+-	if (sampc % aec->blocksize)
++	if (sampc % block)
+ 		return EINVAL;
+ 
+ 	mtx_lock(&aec->mutex);
+ 
+-	for (i = 0; i < sampc; i += aec->blocksize) {
++	for (i = 0; i < sampc; i += block) {
+ 
+-		const float *src = &sampv[i];
+-		float *dest = &sampv[i];
++		float *frame = &sampv[i];
++		const float *src = frame;
++		float *dest = frame;
++
++		if (enc->ch > 1) {
++			for (size_t k = 0; k < aec->blocksize; k++) {
++				float sum = 0;
++				for (uint8_t c = 0; c < enc->ch; c++)
++					sum += frame[k * enc->ch + c];
++				enc->mono[k] = sum / enc->ch;
++			}
++			src = enc->mono;
++			dest = enc->mono;
++		}
+ 
+ 		// NOTE: important
+ 		aec->inst->set_stream_delay_ms(SOUND_CARD_BUF);
+@@ -103,6 +137,12 @@
+ 			err = EPROTO;
+ 			goto out;
+ 		}
++
++		if (enc->ch > 1) {
++			for (size_t k = 0; k < aec->blocksize; k++)
++				for (uint8_t c = 0; c < enc->ch; c++)
++					frame[k * enc->ch + c] = enc->mono[k];
++		}
+ 	}
+ 
+  out:

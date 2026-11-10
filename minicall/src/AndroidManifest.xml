@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.minicall">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <!-- The in-call flag on shared storage tells the wake word service to give up the microphone. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- Only apps signed with the same key (minitv) may start and end calls; declared in both apps, so that the
+         order of installation does not matter. -->
+    <permission android:name="org.minicall.permission.CALL" android:protectionLevel="signature"/>
+    <!-- extractNativeLibs: the helper is run as a program from nativeLibraryDir, so it must exist as a file. -->
+    <application android:label="minicall" android:extractNativeLibs="true" android:allowBackup="false">
+        <activity android:name=".MainActivity" android:exported="true"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity android:name=".CallActivity" android:exported="false"
+            android:launchMode="singleTask" android:excludeFromRecents="true"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"/>
+        <service android:name=".CallService" android:exported="false"/>
+        <receiver android:name=".CallReceiver" android:exported="true"
+            android:permission="org.minicall.permission.CALL">
+            <intent-filter>
+                <action android:name="org.minicall.action.CALL"/>
+                <action android:name="org.minicall.action.HANGUP"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

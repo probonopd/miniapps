@@ -1,0 +1,31 @@
+--- a/sftp-server-main.c	2025-02-18 09:15:08.000000000 +0100
++++ b/sftp-server-main.c	2026-11-10 21:44:50.498081761 +0100
+@@ -38,14 +38,25 @@
+ main(int argc, char **argv)
+ {
+ 	struct passwd *user_pw;
++	static struct passwd synth_pw;
+ 
+ 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
+ 	sanitise_stdfd();
+ 
+ 	if ((user_pw = getpwuid(getuid())) == NULL) {
+-		fprintf(stderr, "No user found for uid %lu\n",
+-		    (u_long)getuid());
+-		return 1;
++		/* Statically linked against glibc, running under Android's bionic: getpwuid()
++		 * can't see bionic's built-in passwd table, so it always returns NULL here -
++		 * same issue as dropbear itself (see dropbear/patches/dropbear-no-android-passwd.patch
++		 * in the minisshd repo this is built from). Synthesize an identity instead of
++		 * failing to start, matching dropbear's own synthesized uid/gid/shell/home. */
++		synth_pw.pw_uid = getuid();
++		synth_pw.pw_gid = getgid();
++		synth_pw.pw_name = (char *)"android";
++		synth_pw.pw_passwd = (char *)"";
++		synth_pw.pw_gecos = (char *)"";
++		synth_pw.pw_dir = (char *)"/data/local/tmp";
++		synth_pw.pw_shell = (char *)"/system/bin/sh";
++		user_pw = &synth_pw;
+ 	}
+ 
+ 	return (sftp_server_main(argc, argv, user_pw));

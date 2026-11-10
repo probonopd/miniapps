@@ -1,0 +1,20 @@
+--- a/src/svr-chansession.c	2024-10-22 16:30:00.000000000 +0200
++++ b/src/svr-chansession.c	2026-11-10 21:40:12.024797990 +0100
+@@ -682,11 +682,15 @@
+ 		if (issubsys) {
+ #if DROPBEAR_SFTPSERVER
+ 			if ((cmdlen == 4) && strncmp(chansess->cmd, "sftp", 4) == 0) {
+-				char *expand_path = expand_homedir_path(SFTPSERVER_PATH);
++				/* SFTPSERVER_PATH is a compile-time constant, but this build's sftp-server
++				 * binary lives under the app's nativeLibraryDir, which is only known at
++				 * install time and differs per device - let the launching app override it. */
++				const char *override = getenv("DROPBEAR_SFTPSERVER_PATH");
++				char *expand_path = expand_homedir_path(override ? override : SFTPSERVER_PATH);
+ 				m_free(chansess->cmd);
+ 				chansess->cmd = m_strdup(expand_path);
+ 				m_free(expand_path);
+-			} else 
++			} else
+ #endif
+ 			{
+ 				m_free(chansess->cmd);

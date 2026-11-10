@@ -1,0 +1,20 @@
+--- a/src/sa/printaddr.c
++++ b/src/sa/printaddr.c
+@@ -34,10 +34,13 @@
+ #ifdef HAVE_GETIFADDRS
+ 		char ifname[IF_NAMESIZE];
+ 
+-		if (!if_indextoname(sa->u.in6.sin6_scope_id, ifname))
+-			return errno;
+-
+-		err |= re_hprintf(pf, "%%%s", ifname);
++		/* Android's SELinux policy denies apps the SIOCGIFNAME
++		 * ioctl behind if_indextoname(); the numeric scope is
++		 * understood by getaddrinfo() just as well. */
++		if (if_indextoname(sa->u.in6.sin6_scope_id, ifname))
++			err |= re_hprintf(pf, "%%%s", ifname);
++		else
++			err |= re_hprintf(pf, "%%%u", sa_scopeid(sa));
+ #else
+ 		uint32_t scope_id = sa_scopeid(sa);
+ 		err |= re_hprintf(pf, "%%%d", scope_id);

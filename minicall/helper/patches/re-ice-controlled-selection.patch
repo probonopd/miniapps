@@ -1,0 +1,90 @@
+--- a/src/ice/connchk.c
++++ b/src/ice/connchk.c
+@@ -132,7 +132,10 @@
+ 	icem_candpair_make_valid(cp);
+ 	icem_comp_set_selected(cp->comp, cp);
+ 
+-	cp->nominated = true;
++	/* A controlled agent's own checks nominate nothing: the pair is the
++	 * one the controlling peer nominates (USE-CANDIDATE, stunsrv.c). */
++	if (icem->lrole == ICE_ROLE_CONTROLLING)
++		cp->nominated = true;
+ 
+ #if 0
+ 	/* stop conncheck now -- conclude */
+--- a/src/ice/chklist.c
++++ b/src/ice/chklist.c
+@@ -204,6 +204,30 @@
+ }
+ 
+ 
++static struct ice_candpair *best_valid_pair(const struct icem_comp *comp)
++{
++	struct ice_candpair *best = NULL;
++	bool controlled = comp->icem->lrole == ICE_ROLE_CONTROLLED;
++	struct le *le;
++
++	for (le = comp->icem->validl.head; le; le = le->next) {
++
++		struct ice_candpair *cp = le->data;
++
++		if (cp->comp != comp || cp->state != ICE_CANDPAIR_SUCCEEDED)
++			continue;
++
++		if (controlled && cp->nominated)
++			return cp;
++
++		if (!best || cp->pprio > best->pprio)
++			best = cp;
++	}
++
++	return best;
++}
++
++
+ /* 8.  Concluding ICE Processing */
+ static void concluding_ice(struct icem_comp *comp)
+ {
+@@ -213,9 +237,12 @@
+ 	if (!comp || comp->concluded)
+ 		return;
+ 
+-	/* pick the best candidate pair, highest priority */
+-	cp = icem_candpair_find_st(&comp->icem->validl, comp->id,
+-				   ICE_CANDPAIR_SUCCEEDED);
++	/* pick the best candidate pair: the one the controlling peer
++	 * nominated, else the one of highest priority. The first pair of the
++	 * valid list is only the first one validated, which can be a pair
++	 * the peer does not use (behind one NAT: server reflexive on both
++	 * ends while the peer sends over the host pair). */
++	cp = best_valid_pair(comp);
+ 	if (!cp) {
+ 		DEBUG_WARNING("{%s.%u} conclude: no valid candpair found"
+ 			      " (validlist=%u)\n",
+--- a/src/ice/stunsrv.c
++++ b/src/ice/stunsrv.c
+@@ -67,9 +67,13 @@
+ 			break;
+ 		}
+ 	}
+-	else {
++	else if (lcand && rcand) {
+ 
+-#if 0
++		/* RFC 8445 7.3.1.4: a request from a candidate that is not
++		 * paired yet (peer reflexive, e.g. a browser that hides its
++		 * host address behind an mDNS name) gets a pair and a
++		 * triggered check; otherwise that path can never be used,
++		 * not even when the peer nominates it. */
+ 		err = icem_candpair_alloc(&cp, icem, lcand, rcand);
+ 		if (err) {
+ 			DEBUG_WARNING("failed to allocate candpair:"
+@@ -83,8 +87,6 @@
+ 		icem_candpair_set_state(cp, ICE_CANDPAIR_WAITING);
+ 
+ 		(void)icem_conncheck_send(cp, false, true);
+-#endif
+-
+ 	}
+ }
+ 

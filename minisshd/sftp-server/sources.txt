@@ -1,0 +1,3 @@
+# name|url (downloaded into dl/, extracted and patched into src/; pinned by sources.sha256)
+zlib|https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+openssh|https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.9p2.tar.gz

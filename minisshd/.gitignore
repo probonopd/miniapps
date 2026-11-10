@@ -1,0 +1,5 @@
+dropbear/dl/
+dropbear/src/
+dropbear/out/
+build/
+minisshd*.apk

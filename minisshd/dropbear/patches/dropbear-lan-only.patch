@@ -1,0 +1,41 @@
+--- a/src/svr-main.c	2024-10-22 16:30:00.000000000 +0200
++++ b/src/svr-main.c	2026-11-10 21:31:16.414635289 +0100
+@@ -38,6 +38,24 @@
+ static void main_inetd(void);
+ static void main_noinetd(int argc, char ** argv, const char* multipath);
+ static void commonsetup(void);
++static int is_lan_addr(const char *host);
++
++/* This build's whole auth model (see fill_passwd() in common-session.c) is a blank-password
++ * bypass meant for a private LAN only - reject anything else at accept() time, before any
++ * protocol or auth exchange, rather than relying on the network never forwarding this port. */
++static int is_lan_addr(const char *host) {
++	unsigned int second_octet;
++	if (strncmp(host, "127.", 4) == 0) return 1;
++	if (strncmp(host, "10.", 3) == 0) return 1;
++	if (strncmp(host, "192.168.", 8) == 0) return 1;
++	if (sscanf(host, "172.%u.", &second_octet) == 1 && second_octet >= 16 && second_octet <= 31) return 1;
++	if (strcmp(host, "::1") == 0) return 1;
++	/* fc00::/7 (unique local) and fe80::/10 (link-local) */
++	if (strncmp(host, "fc", 2) == 0 || strncmp(host, "fd", 2) == 0) return 1;
++	if (strncmp(host, "fe8", 3) == 0 || strncmp(host, "fe9", 3) == 0 ||
++			strncmp(host, "fea", 3) == 0 || strncmp(host, "feb", 3) == 0) return 1;
++	return 0;
++}
+ 
+ #if defined(DBMULTI_dropbear) || !DROPBEAR_MULTI
+ #if defined(DBMULTI_dropbear) && DROPBEAR_MULTI
+@@ -276,6 +294,13 @@
+ 			/* Limit the number of unauthenticated connections per IP */
+ 			getaddrstring(&remoteaddr, &remote_host, NULL, 0);
+ 
++			if (!is_lan_addr(remote_host)) {
++				dropbear_log(LOG_WARNING, "Rejected non-LAN connection from %s", remote_host);
++				m_close(childsock);
++				m_free(remote_host);
++				continue;
++			}
++
+ 			num_unauthed_for_addr = 0;
+ 			num_unauthed_total = 0;
+ 			for (j = 0; j < MAX_UNAUTH_CLIENTS; j++) {

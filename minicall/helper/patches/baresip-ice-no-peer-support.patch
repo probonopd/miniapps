@@ -1,0 +1,23 @@
+--- a/modules/ice/ice.c
++++ b/modules/ice/ice.c
+@@ -978,8 +978,20 @@
+ 
+ 		LIST_FOREACH(&sess->medial, le) {
+ 			struct mnat_media *m = le->data;
++			struct sa rtcp;
+ 
+ 			err |= set_media_attributes(m);
++
++			/* Without connectivity checks nothing else reports
++			 * the stream as connected, and its media would never
++			 * start: use the peer's addresses from its SDP. */
++			if (m->complete || !m->connh ||
++			    !sa_isset(sdp_media_raddr(m->sdpm), SA_ALL))
++				continue;
++
++			sdp_media_raddr_rtcp(m->sdpm, &rtcp);
++			m->complete = true;
++			m->connh(sdp_media_raddr(m->sdpm), &rtcp, m->arg);
+ 		}
+ 	}
+ 

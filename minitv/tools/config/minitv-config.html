@@ -1,0 +1,2526 @@
+<!doctype html>
+<!--
+ * Copyright (c) 2026 Simon Peter
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:,">
+<title>minitv Einstellungen</title>
+<style>
+:root {
+  --bg: #f4f2ee; --card: #ffffff; --text: #1c1e22; --muted: #5a6068; --line: #d8d4cc;
+  --field: #ffffff; --field-line: #a9a49a; --accent: #1f5fbf; --accent-text: #ffffff;
+  --accent-soft: #e4ecf8; --ok: #1b7a3a; --ok-soft: #e2f3e7; --warn: #8a5a00; --warn-soft: #fbf0d9;
+  --err: #b42318; --err-soft: #fbe6e3; --off: #8b9097; --focus: #f0a400;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --card: #1f2226; --text: #eceef1; --muted: #a5abb3; --line: #353a40;
+    --field: #15171a; --field-line: #5b626a; --accent: #6ea3ff; --accent-text: #0c1424;
+    --accent-soft: #23324a; --ok: #5fd08a; --ok-soft: #1c3326; --warn: #f0c060; --warn-soft: #3a3020;
+    --err: #ff8a7a; --err-soft: #3d2421; --off: #6d737a; --focus: #ffc640;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --card: #1f2226; --text: #eceef1; --muted: #a5abb3; --line: #353a40;
+  --field: #15171a; --field-line: #5b626a; --accent: #6ea3ff; --accent-text: #0c1424;
+  --accent-soft: #23324a; --ok: #5fd08a; --ok-soft: #1c3326; --warn: #f0c060; --warn-soft: #3a3020;
+  --err: #ff8a7a; --err-soft: #3d2421; --off: #6d737a; --focus: #ffc640;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 18px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  overflow-x: hidden;
+}
+header.top {
+  position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--line);
+}
+.top-inner { max-width: 900px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.top h1 { font-size: 1.25rem; margin: 0; flex: 1 1 auto; }
+nav.jump { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .95rem; width: 100%; }
+nav.jump a { color: var(--accent); text-decoration: none; padding: 6px 0; }
+nav.jump a:hover { text-decoration: underline; }
+main { max-width: 900px; margin: 0 auto; padding: 16px; }
+section.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 0 0 18px;
+  scroll-margin-top: 110px;
+}
+h2 { font-size: 1.3rem; margin: 0 0 12px; }
+h3 { font-size: 1.1rem; margin: 0; }
+p { margin: 8px 0; }
+.muted, .hint { color: var(--muted); }
+.hint { font-size: .92rem; }
+.small { font-size: .9rem; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* Controls: at least 48 px high so that they are easy to hit with a finger. */
+button, .btn {
+  font: inherit; min-height: 48px; padding: 8px 18px; border-radius: 10px; border: 1px solid var(--field-line);
+  background: var(--card); color: var(--text); cursor: pointer; display: inline-flex; align-items: center;
+  justify-content: center; gap: 6px; text-align: center;
+}
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+button.danger { color: var(--err); border-color: var(--err); }
+button.small { min-height: 44px; padding: 6px 12px; font-size: .95rem; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+input[type=text], input[type=password], input[type=url], input[type=number], input[type=time], select, textarea {
+  font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--field-line);
+  border-radius: 10px; min-height: 48px; padding: 8px 12px; max-width: 100%;
+}
+textarea { width: 100%; resize: vertical; line-height: 1.4; }
+input[type=number] { width: 4.6em; }
+input[type=time] { width: 7.5em; }
+input.wide, select.wide { width: 100%; }
+input[aria-invalid=true], textarea[aria-invalid=true] { border-color: var(--err); border-width: 2px; }
+label.field { display: block; margin: 10px 0; }
+label.field > span.lab { display: block; font-weight: 600; margin-bottom: 4px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+fieldset { border: 0; padding: 0; margin: 12px 0; min-width: 0; }
+legend { font-weight: 600; padding: 0; margin-bottom: 6px; }
+details > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+
+/* On/off switch: a real checkbox, styled. */
+input.switch {
+  appearance: none; -webkit-appearance: none; width: 56px; height: 32px; border-radius: 16px; margin: 0;
+  background: var(--off); position: relative; cursor: pointer; flex: none; transition: background .15s;
+}
+input.switch::before {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%;
+  background: #fff; transition: transform .15s;
+}
+input.switch:checked { background: var(--ok); }
+input.switch:checked::before { transform: translateX(24px); }
+label.switch-label { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; cursor: pointer; }
+
+/* Segmented three-way choice built from radio buttons. */
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--field-line); border-radius: 10px; overflow: hidden; }
+.seg label { position: relative; flex: 1 1 auto; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg span { display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 6px 10px; cursor: pointer; border-right: 1px solid var(--field-line); }
+.seg label:last-child span { border-right: 0; }
+.seg input:checked + span { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+.seg input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: -3px; }
+label.choice { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; }
+.opt { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 2px 0; }
+.opt.inactive { opacity: .6; }
+.indent { padding-left: 32px; }
+input[type=radio], input[type=checkbox]:not(.switch) { width: 24px; height: 24px; margin: 0; flex: none; accent-color: var(--accent); }
+
+/* Status lines. */
+.status { padding: 10px 12px; border-radius: 10px; margin: 10px 0; background: var(--accent-soft); }
+.status.ok { background: var(--ok-soft); color: var(--ok); }
+.status.warn { background: var(--warn-soft); color: var(--warn); }
+.status.err { background: var(--err-soft); color: var(--err); }
+.status:empty { display: none; }
+.dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; background: var(--off); flex: none; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.err { background: var(--err); }
+.boxpick { display: inline-flex; align-items: center; gap: 8px; }
+.boxpick select { max-width: 60vw; font: inherit; }
+.pill { display: inline-flex; align-items: center; gap: 8px; font-size: .95rem; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .85rem; font-weight: 600; background: var(--warn-soft); color: var(--warn); }
+.badge[hidden] { display: none; }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.err { background: var(--err-soft); color: var(--err); }
+.syncline { margin: 4px 0 0; font-weight: 600; }
+.syncline.ok { color: var(--ok); } .syncline.warn { color: var(--warn); } .syncline.err { color: var(--err); }
+.group-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.group-legend .syncline { font-weight: 400; margin: 0; }
+#remEditor { margin: 0; }
+dl.facts dd.wide { grid-column: 1 / -1; }
+.stream-error { margin: 0 0 6px; padding: 8px 10px; border-left: 3px solid var(--err); background: var(--err-soft); border-radius: 6px; }
+.stream-head { font-weight: 600; color: var(--err); }
+button.mono {
+  font: .8rem/1.35 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; min-height: 32px; padding: 4px 8px;
+  margin: 4px 0; text-align: left; justify-content: flex-start; overflow-wrap: anywhere; white-space: normal; max-width: 100%;
+}
+.ok-text { color: var(--ok); }
+.snack {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 10; max-width: calc(100% - 32px);
+  display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 12px;
+  background: var(--text); color: var(--bg); box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+.snack button { background: transparent; color: var(--bg); border-color: var(--bg); font-weight: 600; }
+
+/* TV facts. */
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+.tv-head { display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 600; }
+
+/* Reminders. */
+.presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 8px 0 4px; }
+.presets button { font-size: .95rem; padding: 6px 10px; }
+article.reminder { border: 1px solid var(--line); border-left: 6px solid var(--ok); border-radius: 12px; padding: 12px 14px; margin: 14px 0; background: var(--card); }
+article.reminder.off { border-left-color: var(--off); }
+article.reminder.off .rem-body { opacity: .6; }
+.rem-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.summary { font-weight: 600; margin: 10px 0 2px; }
+.preview { color: var(--muted); font-size: .95rem; margin: 0 0 6px; }
+.errors { color: var(--err); font-weight: 600; margin: 6px 0; padding-left: 1.2em; }
+.errors:empty { display: none; }
+.count { font-size: .85rem; color: var(--muted); }
+.subgroup { margin: 8px 0 0 0; padding: 6px 0 0 12px; border-left: 3px solid var(--line); }
+.subgroup[hidden] { display: none; }
+
+/* Settings. */
+.setting { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.setting:first-of-type { border-top: 0; }
+.setting .lab { flex: 1 1 260px; }
+.setting .ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.setting .changed { color: var(--warn); font-weight: 600; font-size: .85rem; }
+
+/* Log. */
+ol.log { list-style: none; padding: 0; margin: 8px 0 0; font-size: .95rem; }
+ol.log li { padding: 6px 0; border-top: 1px solid var(--line); display: flex; gap: 10px; }
+ol.log time { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+ol.log .err { color: var(--err); }
+ol.log .ok { color: var(--ok); }
+button.linkbtn { min-height: 32px; padding: 0 6px; border: 0; background: none; color: var(--accent); text-decoration: underline; font-weight: 400; font-size: .95rem; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+@media (max-width: 480px) {
+  main { padding: 12px; }
+  section.card { padding: 14px 12px; }
+  article.reminder { padding: 10px; }
+  .indent { padding-left: 0; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <h1>Fernseher einstellen</h1>
+    <label class="boxpick"><span class="lab">Fernseher</span>
+      <select id="boxSelect" aria-label="Fernseher wählen"></select></label>
+    <span class="pill" id="topStatus"><span class="dot" id="topDot"></span><span id="topText">Nicht verbunden</span></span>
+    <span class="badge" id="syncBadge" role="status" aria-live="polite" hidden></span>
+    <nav class="jump" aria-label="Abschnitte">
+      <a href="#erinnerungen">Erinnerungen</a>
+      <a href="#nachricht">Nachricht senden</a>
+      <a href="#steuern">Fernseher steuern</a>
+      <a href="#einstellungen">Einstellungen</a>
+      <a href="#sichern">Sichern</a>
+      <a href="#meldungen">Meldungen</a>
+      <a href="#verbindung">Verbindung</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="card" id="verbindung" aria-labelledby="h-conn">
+  <h2 id="h-conn">Verbindung</h2>
+  <div class="status" id="connStatus" role="status" aria-live="polite"></div>
+  <details id="connDetails" open>
+    <summary>Zugangsdaten</summary>
+    <form id="connForm" autocomplete="on">
+      <label class="field"><span class="lab">Server-Adresse</span>
+        <input type="url" id="cUrl" class="wide" placeholder="wss://beispiel.de:8084/mqtt" autocomplete="url" spellcheck="false" inputmode="url" required></label>
+      <label class="field"><span class="lab">Benutzername</span>
+        <input type="text" id="cUser" class="wide" autocomplete="username" spellcheck="false" autocapitalize="off"></label>
+      <label class="field"><span class="lab">Passwort</span>
+        <input type="password" id="cPass" class="wide" autocomplete="current-password"></label>
+      <!-- The TV is picked from the list at the top, which is filled from the broker: nothing to type. -->
+      <input type="hidden" id="cBase">
+      <input type="hidden" id="cLabel">
+      <label class="choice"><input type="checkbox" id="cRemember"> Zugangsdaten auf diesem Gerät merken</label>
+      <p class="hint">Ohne Haken wird das Passwort nur bis zum Schließen der Seite behalten. Adresse und Benutzer merkt sich die Seite immer.</p>
+      <div class="buttons">
+        <button type="submit" class="primary" id="btnConnect">Verbinden</button>
+        <button type="button" id="btnDisconnect" disabled>Trennen</button>
+      </div>
+    </form>
+    <details class="small" style="margin-top:10px">
+      <summary>Hilfe zur Verbindung</summary>
+      <p>Der Fernseher und diese Seite treffen sich bei einem MQTT-Server (Broker) im Internet. Die Seite spricht MQTT 3.1.1 über eine sichere WebSocket-Verbindung (wss).</p>
+      <ul>
+        <li>EMQX Cloud (serverless): <code>wss://NAME.emqxsl.com:8084/mqtt</code></li>
+        <li>HiveMQ Cloud: <code>wss://NAME.hivemq.cloud:8884/mqtt</code></li>
+        <li>Benutzer und Passwort sind die des Brokers (wie in <code>mqtt.conf</code> des Fernsehers, Zeilen <code>user=</code> und <code>password=</code>).</li>
+        <li>Die Fernseher erscheinen von selbst in der Auswahl oben, sobald sie mit demselben Server verbunden sind.</li>
+      </ul>
+      <p>Typische Fehler: falscher Port (8883 ist für Programme, nicht für Browser; im Browser 8084 bzw. 8884), fehlendes <code>/mqtt</code> am Ende, Tippfehler im Passwort.</p>
+    </details>
+  </details>
+</section>
+
+<section class="card" id="fernseher" aria-labelledby="h-tv">
+  <h2 id="h-tv">Fernseher</h2>
+  <div class="tv-head" role="status" aria-live="polite"><span class="dot" id="tvDot"></span><span id="tvHead">Noch nicht verbunden</span></div>
+  <p class="muted small" id="tvSub"></p>
+  <dl class="facts" id="tvFacts"></dl>
+</section>
+
+<section class="card" id="erinnerungen" aria-labelledby="h-rem">
+  <h2 id="h-rem">Erinnerungen</h2>
+  <p class="hint">Erinnerungen erscheinen am Fernseher zur eingestellten Zeit, auf dem Bildschirm, gesprochen oder beides. Sie kommen nur, während der Fernseher läuft. Es gilt die Uhrzeit des Fernsehers.</p>
+  <p class="hint">Jede Änderung wird von selbst zum Fernseher übertragen. Ist er ausgeschaltet, übernimmt er sie beim nächsten Einschalten.</p>
+  <fieldset id="remEditor" disabled>
+  <details id="presetBox">
+    <summary>Typische Erinnerungen hinzufügen</summary>
+    <p class="hint">Ein Tipp fügt eine Erinnerung hinzu, die Sie danach ändern können.</p>
+    <div class="presets" id="presets"></div>
+  </details>
+  <div id="remList"></div>
+  <p class="muted" id="remEmpty">Noch keine Erinnerungen.</p>
+  <div class="buttons">
+    <button type="button" id="btnAddReminder">Neue Erinnerung</button>
+  </div>
+  </fieldset>
+  <p class="small muted" id="remCount"></p>
+  <div class="small" id="remStatus" role="status" aria-live="polite"></div>
+</section>
+
+<section class="card" id="nachricht" aria-labelledby="h-msg">
+  <h2 id="h-msg">Nachricht jetzt senden</h2>
+  <div class="status warn offline-hint" role="status"></div>
+  <label class="field"><span class="lab">Text <button type="button" class="linkbtn" id="btnMsgEmpty">Leeren</button></span>
+    <textarea id="msgText" rows="3" maxlength="500" placeholder="Zum Beispiel: Ich rufe gleich an!"></textarea></label>
+  <div id="msgPres"></div>
+  <div class="buttons">
+    <button type="button" class="primary" id="btnMsgSend" data-needs-tv>Senden</button>
+    <button type="button" id="btnMsgSay" data-needs-tv>Nur vorlesen</button>
+    <button type="button" id="btnMsgClear" data-needs-tv>Nachricht entfernen</button>
+    <button type="button" id="btnSayStop" data-needs-tv>Stopp Sprache</button>
+  </div>
+  <div class="small" id="msgStatus" role="status" aria-live="polite"></div>
+</section>
+
+<section class="card" id="steuern" aria-labelledby="h-ctl">
+  <h2 id="h-ctl">Fernseher steuern</h2>
+  <div class="status warn offline-hint" role="status"></div>
+  <label class="field"><span class="lab">Sender</span>
+    <span class="row"><select id="ctlChannel" class="wide" style="flex:1 1 220px"></select>
+    <button type="button" id="btnChannel" data-needs-tv>Umschalten</button></span></label>
+  <label class="field"><span class="lab">Lautstärke: <output id="ctlVolumeOut">-</output></span>
+    <input type="range" id="ctlVolume" min="0" max="100" step="1" class="wide" data-needs-tv></label>
+  <fieldset>
+    <legend>Videoanruf</legend>
+    <p class="hint" id="callHint"></p>
+    <label class="field"><span class="lab">Raum (Name oder Adresse)</span>
+      <input type="text" id="ctlRoom" class="wide" spellcheck="false" autocapitalize="off" placeholder="Familie-Mueller"></label>
+    <div class="buttons">
+      <button type="button" class="primary" id="btnCall" data-needs-tv data-needs-call>Anrufen</button>
+      <button type="button" id="btnHangup" data-needs-tv data-needs-call>Auflegen</button>
+    </div>
+  </fieldset>
+  <div class="buttons">
+    <button type="button" id="btnReload" data-needs-tv>Senderliste neu laden</button>
+  </div>
+  <div class="small" id="ctlStatus" role="status" aria-live="polite"></div>
+</section>
+
+<section class="card" id="einstellungen" aria-labelledby="h-set">
+  <h2 id="h-set">Einstellungen</h2>
+  <p class="hint">Grundeinstellungen des Fernsehers. Die Werte für Nachrichten und Sprache gelten für alle Erinnerungen, die nichts anderes sagen.</p>
+  <div id="setGroups"></div>
+  <p class="muted" id="setEmpty">Erscheint, sobald der Fernseher seine Einstellungen gemeldet hat.</p>
+</section>
+
+<section class="card" id="sichern" aria-labelledby="h-io">
+  <h2 id="h-io">Erinnerungen sichern und übertragen</h2>
+  <p class="hint">Speichern Sie die Erinnerungen als Datei, um sie aufzubewahren oder auf einen anderen Fernseher zu übertragen. Laden ersetzt alle Erinnerungen am Fernseher (nach einer Rückfrage).</p>
+  <div class="buttons">
+    <button type="button" id="btnExport">Als Datei speichern</button>
+    <label class="btn" for="importFile">Datei laden</label>
+    <input type="file" id="importFile" accept=".json,application/json" class="visually-hidden">
+  </div>
+  <label class="field"><span class="lab">Oder Text einfügen</span>
+    <textarea id="importText" rows="4" spellcheck="false" placeholder='[{"text":"Bitte etwas trinken.","from":"08:00","to":"20:01","every":60}]'></textarea></label>
+  <div class="buttons"><button type="button" id="btnImportText">Text übernehmen</button></div>
+  <div class="small" id="ioStatus" role="status" aria-live="polite"></div>
+</section>
+
+<section class="card" id="meldungen" aria-labelledby="h-log">
+  <h2 id="h-log">Meldungen</h2>
+  <p class="hint">Antworten und Fehler des Fernsehers, die neuesten oben.</p>
+  <ol class="log" id="log"></ol>
+  <p class="muted" id="logEmpty">Noch keine Meldungen.</p>
+</section>
+</main>
+<div class="snack" id="snack" role="status" aria-live="polite" hidden><span id="snackText"></span><button type="button" id="snackUndo">Rückgängig</button></div>
+
+<script>
+'use strict';
+
+/* ====================================================================================
+ * PRESETS - the gallery "Typische Erinnerungen hinzufügen". Add entries here.
+ *   title: button label; text: what is shown and spoken; id: base for the entry id
+ *   at: "HH:mm" or a list of them (one reminder per time)
+ *   or from/until/every: every n minutes from "from" up to and including "until"
+ *   mode: "text" | "speech" | "both"; optional show_seconds (0 = until a key), repeat, pause
+ * ==================================================================================== */
+const PRESETS = [
+  { title: 'Frühstück', id: 'fruehstueck', text: 'Guten Morgen! Zeit für das Frühstück.', at: '08:00', mode: 'both' },
+  { title: 'Mittagessen', id: 'mittagessen', text: 'Zeit zum Mittagessen. Guten Appetit!', at: '12:00', mode: 'both' },
+  { title: 'Kaffee und Kuchen', id: 'kaffee', text: 'Zeit für Kaffee und Kuchen.', at: '15:00', mode: 'both' },
+  { title: 'Abendessen', id: 'abendessen', text: 'Zeit zum Abendessen. Guten Appetit!', at: '18:00', mode: 'both' },
+  { title: 'Trinken', id: 'trinken', text: 'Bitte etwas trinken.', from: '08:00', until: '20:00', every: 60, mode: 'both' },
+  { title: 'Tabletten morgens', id: 'tabletten-morgens', text: 'Bitte die Tabletten für den Morgen nehmen.', at: '08:00', mode: 'both', repeat: 3, pause: 60 },
+  { title: 'Tabletten abends', id: 'tabletten-abends', text: 'Bitte die Tabletten für den Abend nehmen.', at: '20:00', mode: 'both', repeat: 3, pause: 60 },
+  { title: 'Spaziergang', id: 'spaziergang', text: 'Wie wäre es mit einem kleinen Spaziergang?', at: '10:30', mode: 'both' },
+  { title: 'Bewegung', id: 'bewegung', text: 'Zeit für ein bisschen Bewegung.', at: '16:00', mode: 'both' },
+  { title: 'Fenster lüften', id: 'fenster-lueften', text: 'Bitte kurz das Fenster öffnen und lüften.', at: ['09:00', '17:00'], mode: 'text' },
+  { title: 'Bettzeit', id: 'bettzeit', text: 'Es ist Bettzeit.', from: '21:00', until: '05:00', every: 30, mode: 'both' },
+  { title: 'Anruf bei der Familie', id: 'anruf-familie', text: 'Zeit für einen Anruf bei der Familie.', at: '18:30', mode: 'both' },
+];
+
+/* ==== BEGIN LOGIC: pure functions without DOM access, unit-tested by test-logic.js ==== */
+const Logic = (() => {
+  const DAY = 1440;
+  const MODES = ['text', 'speech', 'both'];
+  const MODE_LABEL = { text: 'Bildschirm', speech: 'Sprache', both: 'Beides' };
+  const LIMITS = { entries: 20, text: 500, every: DAY, showSeconds: 3600, repeatMin: 1, repeatMax: 10, pause: 60 };
+  // Keys of a schedule entry that the editor understands; everything else is carried along untouched.
+  const ENTRY_KEYS = ['id', 'text', 'from', 'to', 'every', 'enabled', 'mode', 'show_seconds', 'repeat', 'pause', 'speak'];
+
+  const pad = n => String(n).padStart(2, '0');
+  const isInt = v => typeof v === 'number' && Number.isInteger(v);
+
+  /** "HH:mm" (also "H:mm") as minutes since midnight, or -1; the same rule as Settings.minutes in the app. */
+  function parseHM(s) {
+    const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(typeof s === 'string' ? s.trim() : '');
+    return m ? Number(m[1]) * 60 + Number(m[2]) : -1;
+  }
+  function fmtHM(min) {
+    const m = ((min % DAY) + DAY) % DAY;
+    return pad(Math.floor(m / 60)) + ':' + pad(m % 60);
+  }
+
+  // The window test of MainActivity.checkSchedule: from == to is the whole day, to itself is outside.
+  function inside(from, to, m) {
+    return from === to || (from < to ? m >= from && m < to : m >= from || m < to);
+  }
+
+  /** All minutes of a day at which a stored entry {from,to,every} fires, in window order (starting at from). */
+  function fireTimes(e) {
+    const f = parseHM(e.from), t = parseHM(e.to), every = e.every;
+    if (f < 0 || t < 0 || !isInt(every) || every < 1 || every > DAY) return [];
+    const out = [];
+    // The window is contiguous from f, so the first step outside it ends the series.
+    for (let s = 0; s < DAY; s += every) {
+      const m = (f + s) % DAY;
+      if (!inside(f, t, m)) break;
+      out.push(m);
+    }
+    return out;
+  }
+
+  /** Minutes after "now" (minutes since midnight) at which the entry still fires today, ascending. */
+  function nextTimesToday(e, now) {
+    return fireTimes(e).filter(m => m > now).sort((a, b) => a - b);
+  }
+
+  /*
+   * The editor's view of the time: "daily" (once at "at") or "repeat" (every n minutes or hours from "from" up to and
+   * including "until", or all day). The app's "to" is exclusive; people expect "bis 20:00" to include 20:00, so the
+   * editor stores to = until + 1 minute. A window of the whole day is from == to in the app.
+   */
+  function whenFromStored(e) {
+    const f = parseHM(e.from), t = parseHM(e.to), every = e.every;
+    const w = { kind: 'repeat', at: f >= 0 ? f : 12 * 60, from: f, until: t >= 0 ? (t + DAY - 1) % DAY : -1,
+      allDay: f >= 0 && f === t, n: isInt(every) ? every : NaN, unit: 'min' };
+    if (isInt(every) && every > 0 && every % 60 === 0) { w.n = every / 60; w.unit = 'h'; }
+    if (f >= 0 && t >= 0 && every === 1 && (t - f + DAY) % DAY === 1) {
+      Object.assign(w, { kind: 'daily', at: f, from: 8 * 60, until: 20 * 60, allDay: false, n: 1, unit: 'h' });
+    }
+    return w;
+  }
+
+  function everyMinutes(w) {
+    return isInt(w.n) ? w.n * (w.unit === 'h' ? 60 : 1) : NaN;
+  }
+
+  function whenToStored(w) {
+    if (w.kind === 'daily') {
+      return w.at >= 0 ? { from: fmtHM(w.at), to: fmtHM(w.at + 1), every: 1 } : { from: '', to: '', every: 1 };
+    }
+    const from = w.from >= 0 ? fmtHM(w.from) : '';
+    let to = '';
+    if (w.allDay) to = from;
+    else if (w.until >= 0) to = fmtHM(w.until + 1);
+    return { from, to, every: everyMinutes(w) };
+  }
+
+  function crossesMidnight(w) {
+    return w.kind === 'repeat' && !w.allDay && w.from >= 0 && w.until >= 0 && w.until < w.from;
+  }
+
+  function everyText(every) {
+    if (every === 1) return 'Jede Minute';
+    if (every % 60 === 0) return every === 60 ? 'Jede Stunde' : `Alle ${every / 60} Stunden`;
+    return `Alle ${every} Minuten`;
+  }
+
+  function listTimes(times, max = 6) {
+    const t = times.map(fmtHM);
+    if (t.length <= max) return t.join(', ');
+    return t.slice(0, max - 2).join(', ') + ', ... ' + t[t.length - 1];
+  }
+
+  /** Plain-language summary of a stored entry, e.g. "Täglich um 12:00". */
+  function summary(e) {
+    const times = fireTimes(e);
+    if (!times.length) return 'Die Zeit ist noch nicht vollständig.';
+    const w = whenFromStored(e);
+    if (times.length === 1) return `Täglich um ${fmtHM(times[0])}`;
+    const head = w.allDay ? `${everyText(e.every)}, den ganzen Tag ab ${fmtHM(w.from)}`
+      : `${everyText(e.every)} von ${fmtHM(w.from)} bis ${fmtHM(w.until)}`;
+    return `${head} (um ${listTimes(times)}; ${times.length}\u00a0Mal am Tag)`;
+  }
+
+  /** The times it still comes today, or when it comes next. */
+  function preview(e, now) {
+    const all = fireTimes(e);
+    if (!all.length) return '';
+    const next = nextTimesToday(e, now);
+    if (!next.length) return `Heute nicht mehr. Wieder morgen um ${fmtHM(Math.min(...all))}.`;
+    const shown = next.slice(0, 8).map(fmtHM).join(', ');
+    const more = next.length - 8;
+    return `Heute noch: ${shown}${more > 0 ? ` und ${more} weitere` : ''}`;
+  }
+
+  /** A readable id from a text: "Zeit zum Mittagessen!" -> "zeit-zum-mittagessen". */
+  function slugify(text) {
+    const s = String(text || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss').normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
+    const words = s.split('-').filter(Boolean).slice(0, 3);
+    let id = '';
+    for (const w of words) {
+      const next = id ? id + '-' + w : w;
+      if (next.length > 30) break;
+      id = next;
+    }
+    return id || (words[0] || '').slice(0, 30) || 'erinnerung';
+  }
+  function uniqueId(base, taken) {
+    if (!taken.has(base)) return base;
+    for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
+  }
+  /** Gives every reminder a unique id; existing ids win over new ones, later duplicates get a suffix. */
+  function ensureIds(models) {
+    const taken = new Set();
+    for (const m of models) {
+      if (m.id && !taken.has(m.id)) taken.add(m.id);
+      else m.id = null;
+    }
+    for (const m of models) {
+      if (m.id) continue;
+      m.id = uniqueId(m.idBase || slugify(m.text), taken);
+      taken.add(m.id);
+    }
+  }
+
+  /* Presentation: how a message is shown. The editor keeps explicit values; keys equal to the TV's settings are left
+   * out of the JSON so that a later change of those settings applies to them as well. */
+  function intOr(v, d) { return isInt(v) ? v : d; }
+  function presDefaults(config) {
+    const c = config || {};
+    return { mode: MODES.includes(c.message_mode) ? c.message_mode : 'text', showSeconds: intOr(c.message_seconds, 0),
+      repeat: intOr(c.speech_repeat, 1), pause: intOr(c.speech_pause, 5) };
+  }
+  function presFromMessage(o, d) {
+    let mode = d.mode;
+    if (MODES.includes(o.mode)) mode = o.mode;
+    // "speak" is the deprecated form of mode: true is both, false is text; mode wins when both are given.
+    else if (o.mode === undefined && typeof o.speak === 'boolean') mode = o.speak ? 'both' : 'text';
+    const show = o.show_seconds === undefined ? d.showSeconds : o.show_seconds;
+    return { mode, keyOnly: show === 0, seconds: show === 0 ? 30 : show,
+      repeat: o.repeat === undefined ? d.repeat : o.repeat, pause: o.pause === undefined ? d.pause : o.pause };
+  }
+  function showSeconds(p) { return p.keyOnly ? 0 : p.seconds; }
+  function presToMessage(p, d) {
+    const o = {};
+    if (p.mode !== d.mode) o.mode = p.mode;
+    if (p.mode !== 'speech' && showSeconds(p) !== d.showSeconds) o.show_seconds = showSeconds(p);
+    if (p.mode !== 'text') {
+      if (p.repeat !== d.repeat) o.repeat = p.repeat;
+      if (p.pause !== d.pause) o.pause = p.pause;
+    }
+    return o;
+  }
+  function presProblems(p) {
+    const out = [];
+    if (!MODES.includes(p.mode)) out.push('Bitte Bildschirm, Sprache oder Beides wählen.');
+    if (p.mode !== 'speech' && !p.keyOnly && !(isInt(p.seconds) && p.seconds >= 1 && p.seconds <= LIMITS.showSeconds)) {
+      out.push(`Die Anzeigedauer muss 1 bis ${LIMITS.showSeconds} Sekunden sein.`);
+    }
+    if (p.mode !== 'text') {
+      if (!(isInt(p.repeat) && p.repeat >= LIMITS.repeatMin && p.repeat <= LIMITS.repeatMax)) {
+        out.push(`Wie oft sprechen: ${LIMITS.repeatMin} bis ${LIMITS.repeatMax} mal.`);
+      }
+      if (!(isInt(p.pause) && p.pause >= 0 && p.pause <= LIMITS.pause)) out.push(`Die Pause muss 0 bis ${LIMITS.pause} Sekunden sein.`);
+    }
+    return out;
+  }
+  function describePres(d) {
+    const how = { text: 'nur Bildschirm', speech: 'nur Sprache', both: 'Bildschirm und Sprache' }[d.mode];
+    const screen = d.showSeconds ? `Text bleibt ${d.showSeconds} Sekunden` : 'Text bleibt bis Tastendruck';
+    return `${how}; ${screen}; ${d.repeat}\u00a0Mal sprechen mit ${d.pause} Sekunden Pause`;
+  }
+
+  /* Reminder models (the editor's state) and stored entries (the app's JSON). */
+  let uidCounter = 0;
+  function modelFromStored(raw, d) {
+    const o = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    const extra = {};
+    for (const k of Object.keys(o)) if (!ENTRY_KEYS.includes(k)) extra[k] = o[k];
+    return { uid: ++uidCounter, id: typeof o.id === 'string' && o.id ? o.id : null, idBase: null,
+      enabled: o.enabled !== false, text: typeof o.text === 'string' ? o.text : '',
+      when: whenFromStored(o), pres: presFromMessage(o, d), extra };
+  }
+  function modelFromPreset(p, at, d) {
+    const when = at !== undefined
+      ? { kind: 'daily', at: parseHM(at), from: 8 * 60, until: 20 * 60, allDay: false, n: 1, unit: 'h' }
+      : { kind: 'repeat', at: 12 * 60, from: parseHM(p.from), until: parseHM(p.until), allDay: false,
+          n: p.every % 60 === 0 ? p.every / 60 : p.every, unit: p.every % 60 === 0 ? 'h' : 'min' };
+    const show = p.show_seconds === undefined ? 0 : p.show_seconds;
+    return { uid: ++uidCounter, id: null, idBase: p.id || null, enabled: true, text: p.text, when,
+      pres: { mode: p.mode || d.mode, keyOnly: show === 0, seconds: show || 30, repeat: p.repeat === undefined ? d.repeat : p.repeat,
+        pause: p.pause === undefined ? d.pause : p.pause }, extra: {} };
+  }
+  function modelsFromPreset(p, d) {
+    if (p.at === undefined) return [modelFromPreset(p, undefined, d)];
+    return (Array.isArray(p.at) ? p.at : [p.at]).map(at => modelFromPreset(p, at, d));
+  }
+  function blankModel(d) {
+    return { uid: ++uidCounter, id: null, idBase: null, enabled: true, text: '',
+      when: { kind: 'daily', at: 12 * 60, from: 8 * 60, until: 20 * 60, allDay: false, n: 1, unit: 'h' },
+      pres: { mode: d.mode, keyOnly: true, seconds: 30, repeat: d.repeat, pause: d.pause }, extra: {} };
+  }
+  function copyModel(m) {
+    const c = JSON.parse(JSON.stringify(m));
+    return Object.assign(c, { uid: ++uidCounter, id: null, idBase: m.idBase });
+  }
+  function storedFromModel(m, d) {
+    const o = {};
+    if (m.id) o.id = m.id;
+    o.text = m.text.trim();
+    Object.assign(o, whenToStored(m.when));
+    o.enabled = m.enabled;
+    Object.assign(o, presToMessage(m.pres, d));
+    for (const k of Object.keys(m.extra || {})) if (!(k in o)) o[k] = m.extra[k];
+    return o;
+  }
+  /** The message JSON of a reminder for "test now" and for cmd/message: only text and presentation. */
+  function messageFromPres(text, p, d) {
+    return Object.assign({ text: text.trim() }, presToMessage(p, d));
+  }
+
+  function textProblems(text) {
+    if (!text.trim()) return ['Bitte einen Text eingeben.'];
+    if (text.length > LIMITS.text) return [`Der Text ist zu lang (höchstens ${LIMITS.text} Zeichen).`];
+    return [];
+  }
+  function whenProblems(w) {
+    if (w.kind === 'daily') return w.at >= 0 ? [] : ['Bitte eine gültige Uhrzeit eingeben.'];
+    const out = [];
+    if (w.from < 0) out.push('Bitte eine gültige Anfangszeit eingeben.');
+    if (!w.allDay && w.until < 0) out.push('Bitte eine gültige Endzeit eingeben.');
+    const every = everyMinutes(w);
+    if (!(every >= 1)) out.push('Bitte angeben, alle wie viele Minuten oder Stunden.');
+    else if (every > LIMITS.every) out.push('Höchstens alle 24 Stunden.');
+    return out;
+  }
+  function modelProblems(m) {
+    return [...textProblems(m.text), ...whenProblems(m.when), ...presProblems(m.pres)];
+  }
+  /** Problems of the whole list, as [{index (or -1), message}]. */
+  function listProblems(models) {
+    const out = [];
+    if (models.length > LIMITS.entries) out.push({ index: -1, message: `Höchstens ${LIMITS.entries} Erinnerungen sind möglich.` });
+    models.forEach((m, i) => modelProblems(m).forEach(message => out.push({ index: i, message })));
+    return out;
+  }
+
+  /** Reads a backup (our file format or a bare schedule array); returns {models} or {error}. */
+  function parseBackup(text, d) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { return { error: 'Das ist keine gültige Sicherung (kein JSON).' }; }
+    const list = Array.isArray(data) ? data : data && Array.isArray(data.schedule) ? data.schedule : null;
+    if (!list) return { error: 'In der Datei steht keine Liste von Erinnerungen.' };
+    if (list.some(x => !x || typeof x !== 'object' || Array.isArray(x))) return { error: 'Ein Eintrag der Liste ist keine Erinnerung.' };
+    const models = list.map(x => modelFromStored(x, d));
+    const problems = listProblems(models);
+    if (problems.length) {
+      const p = problems[0];
+      return { error: (p.index >= 0 ? `Erinnerung ${p.index + 1}: ` : '') + p.message };
+    }
+    return { models };
+  }
+  /* Normalized comparison: the TV's echo may differ in key order, in keys left at their default and in number vs
+   * string, none of which changes what the TV does. */
+  function stableStringify(v) {
+    if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+    if (v && typeof v === 'object') {
+      return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
+    }
+    return JSON.stringify(v === undefined ? null : v);
+  }
+  function normScalar(v) {
+    if (typeof v !== 'string') return v;
+    const t = v.trim();
+    if (/^(on|true)$/i.test(t)) return true;
+    if (/^(off|false)$/i.test(t)) return false;
+    if (/^-?\d+$/.test(t)) return Number(t);
+    return t;
+  }
+  /** A schedule entry as the TV will treat it: defaults filled in, times as HH:mm, unknown keys kept. */
+  function normEntry(e, d) {
+    const o = e && typeof e === 'object' && !Array.isArray(e) ? e : {};
+    const out = {};
+    for (const k of Object.keys(o)) if (!ENTRY_KEYS.includes(k)) out[k] = normScalar(o[k]);
+    const m = {};
+    for (const k of ['mode', 'speak', 'show_seconds', 'repeat', 'pause']) if (k in o) m[k] = normScalar(o[k]);
+    const p = presFromMessage(m, d);
+    const f = parseHM(o.from), t = parseHM(o.to);
+    return Object.assign(out, { id: typeof o.id === 'string' ? o.id : '', text: typeof o.text === 'string' ? o.text.trim() : '',
+      from: f >= 0 ? fmtHM(f) : String(o.from), to: t >= 0 ? fmtHM(t) : String(o.to), every: normScalar(o.every),
+      enabled: normScalar(o.enabled) !== false, mode: p.mode, show_seconds: showSeconds(p), repeat: p.repeat, pause: p.pause });
+  }
+  function sameSchedule(a, b, d) {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    return stableStringify(a.map(e => normEntry(e, d))) === stableStringify(b.map(e => normEntry(e, d)));
+  }
+  /** Settings objects agree on every key both have (a key one side does not know is not a difference). */
+  function sameSettings(a, b) {
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+    for (const k of Object.keys(a)) {
+      if (k === 'schedule' || !(k in b)) continue;
+      if (stableStringify(normScalar(a[k])) !== stableStringify(normScalar(b[k]))) return false;
+    }
+    return true;
+  }
+
+  /**
+   * The schedule to send: every valid reminder as it is now; an invalid one as its last valid (sent) version, or not
+   * at all if it never was valid. So a half-typed reminder never stops the others from syncing.
+   * lastValid: Map uid -> stored entry; returns {entries, lastValid} (the new map). Assigns ids to valid reminders.
+   */
+  function scheduleToSend(models, lastValid, d) {
+    const seen = new Set();
+    for (const m of models) {
+      if (m.id && seen.has(m.id)) m.id = null;
+      else if (m.id) seen.add(m.id);
+    }
+    const entries = [], next = new Map();
+    for (const m of models) {
+      let entry = null;
+      if (!modelProblems(m).length) {
+        if (!m.id) { m.id = uniqueId(m.idBase || slugify(m.text), seen); seen.add(m.id); }
+        entry = storedFromModel(m, d);
+      } else if (lastValid.has(m.uid)) {
+        entry = lastValid.get(m.uid);
+      }
+      if (entry) { entries.push(entry); next.set(m.uid, entry); }
+    }
+    return { entries, lastValid: next };
+  }
+
+  /* Why and since when the TV is offline, in German and in the viewer's time zone. */
+  const STOP_DE = [
+    [/^connection lost/, 'Verbindung verloren (Strom aus, Absturz oder kein Internet)'],
+    [/^unclean/, 'unerwartet beendet (Strom weg, Absturz oder abgebrochen)'],
+    [/^reboot/, 'Neustart'], [/^power off/, 'ausgeschaltet'], [/^app stopped/, 'App beendet'],
+  ];
+  function stopText(s) {
+    if (typeof s !== 'string' || !s) return '';
+    const hit = STOP_DE.find(([re]) => re.test(s));
+    return hit ? hit[1] : s;
+  }
+  /** An ISO 8601 text or seconds since 1970 as a Date, or null. */
+  function parseTime(v) {
+    if (typeof v === 'number' && Number.isFinite(v)) return new Date(v * 1000);
+    if (typeof v !== 'string' || !v.trim()) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  /** "22:03" (with "heute" if asked), or "25.10.2026 22:03" when it is not today. */
+  function clockText(date, now, sayToday = false) {
+    const t = pad(date.getHours()) + ':' + pad(date.getMinutes());
+    if (date.toDateString() === now.toDateString()) return sayToday ? `heute ${t}` : t;
+    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${t}`;
+  }
+  function relativeTime(ms) {
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return 'gerade eben';
+    if (min < 60) return min === 1 ? 'vor 1 Minute' : `vor ${min} Minuten`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return h === 1 ? 'vor 1 Stunde' : `vor ${h} Stunden`;
+    const days = Math.floor(h / 24);
+    return days === 1 ? 'vor 1 Tag' : `vor ${days} Tagen`;
+  }
+  /**
+   * {head, sub} for an offline TV: a clean stop carries its time in the status; after a lost connection (the last
+   * will has no time) the last heartbeat of the telemetry is the best there is.
+   */
+  function offlineInfo(status, telemetry, now) {
+    const st = status || {};
+    const stopped = parseTime(st.time), seen = parseTime(telemetry && telemetry.time);
+    let head = 'offline';
+    if (stopped) head = `offline seit ${clockText(stopped, now)} (${relativeTime(now - stopped)})`;
+    else if (seen) head = `offline, zuletzt gesehen um ${clockText(seen, now)} (${relativeTime(now - seen)})`;
+    return { head, sub: stopText(st.reason) };
+  }
+
+  /* Why a stream shows no picture: the player's error codes (ExoPlayer names, or their numbers) in plain German. */
+  const STREAM_NUM = { 1002: 'ERROR_CODE_BEHIND_LIVE_WINDOW', 2001: 'ERROR_CODE_IO_NETWORK_CONNECTION_FAILED',
+    2002: 'ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT', 2004: 'ERROR_CODE_IO_BAD_HTTP_STATUS', 2005: 'ERROR_CODE_IO_FILE_NOT_FOUND',
+    2007: 'ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED', 3001: 'ERROR_CODE_PARSING_CONTAINER_MALFORMED',
+    3002: 'ERROR_CODE_PARSING_MANIFEST_MALFORMED', 3003: 'ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED',
+    3004: 'ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED', 4001: 'ERROR_CODE_DECODER_INIT_FAILED', 4003: 'ERROR_CODE_DECODING_FAILED',
+    5001: 'ERROR_CODE_AUDIO_TRACK_INIT_FAILED' };
+  const WRONG_ADDRESS = 'Adresse stimmt nicht oder der Sender sperrt diesen Standort.';
+  const CHECK_NET = 'Internetverbindung des Fernsehers prüfen.';
+  const STREAM_DE = {
+    ERROR_CODE_IO_NETWORK_CONNECTION_FAILED: ['Der Sender antwortet nicht', CHECK_NET],
+    ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT: ['Der Sender antwortet zu langsam', CHECK_NET],
+    ERROR_CODE_IO_FILE_NOT_FOUND: ['Die Senderadresse gibt es nicht', WRONG_ADDRESS],
+    ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED: ['Unverschlüsselte Adresse (http) ist nicht erlaubt', 'In der Senderliste https verwenden.'],
+    ERROR_CODE_BEHIND_LIVE_WINDOW: ['Der Livestream ist zu weit zurückgefallen', 'Meist startet er von selbst neu.'],
+    ERROR_CODE_DECODER_INIT_FAILED: ['Das Bildformat kann nicht abgespielt werden', 'Der Fernseher unterstützt dieses Format nicht.'],
+    ERROR_CODE_DECODING_FAILED: ['Fehler beim Abspielen des Bildes', 'Meist eine Störung beim Sender; später noch einmal versuchen.'],
+    ERROR_CODE_AUDIO_TRACK_INIT_FAILED: ['Der Ton kann nicht gestartet werden', 'Tonausgabe (Kopfhörer, USB-Ton) prüfen.'],
+    ended: ['Der Sender hat die Übertragung beendet', ''],
+    'no-picture': ['Kein Bild vom Sender', ''],
+    'no-internet': ['Der Fernseher hat kein Internet', 'WLAN oder Router prüfen.'],
+  };
+  /** {code, text, hint} for a stream error code; the HTTP status comes from the message ("Response code: 404"). */
+  function streamCodeText(code, message) {
+    let c = typeof code === 'number' || /^\d+$/.test(String(code)) ? STREAM_NUM[Number(code)] || String(code) : String(code || '');
+    const msg = typeof message === 'string' ? message : '';
+    if (c === 'ERROR_CODE_IO_BAD_HTTP_STATUS') {
+      const st = (/Response code: (\d{3})/.exec(msg) || /\b(4\d\d|5\d\d)\b/.exec(msg) || [])[1];
+      if (st === '404' || st === '410') return { code: c, text: `Die Senderadresse wurde nicht gefunden (${st})`, hint: WRONG_ADDRESS };
+      if (st === '403' || st === '401') return { code: c, text: `Der Sender verweigert den Zugriff (${st})`, hint: WRONG_ADDRESS };
+      return { code: c, text: `Der Sender meldet einen Fehler${st ? ` (${st})` : ''}`, hint: 'Meist eine Störung beim Sender; später noch einmal versuchen.' };
+    }
+    if (/^ERROR_CODE_PARSING_/.test(c)) return { code: c, text: 'Der Sender liefert unlesbare Daten', hint: 'Meist eine Störung beim Sender; später noch einmal versuchen.' };
+    const hit = STREAM_DE[c];
+    return hit ? { code: c, text: hit[0], hint: hit[1] } : { code: c, text: c || 'Unbekannter Fehler', hint: '' };
+  }
+  const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  /**
+   * The stream error to show while the screen is red or yellow, or null. Sources, newest first among those of the
+   * current address: telemetry.last_stream_error (newer app), the live errors events, telemetry.last_error of type
+   * stream; else the short code of state.stream_error, else what the screen says.
+   */
+  function streamProblem(state, telemetry, live) {
+    if (!isRecord(state)) return null;
+    const code = typeof state.stream_error === 'string' ? state.stream_error : '';
+    const bad = state.screen === 'red-no-picture' || state.screen === 'yellow-no-internet';
+    if (!bad && !code) return null;
+    if (state.picture === true && state.screen === 'ok') return null;
+    const tel = isRecord(telemetry) ? telemetry : {};
+    const url = typeof tel.url === 'string' ? tel.url : '';
+    const cands = [tel.last_stream_error, live, tel.last_error]
+      .filter(e => isRecord(e) && e.type === 'stream' && (!url || typeof e.url !== 'string' || e.url === url));
+    const t = e => { const d = parseTime(e.time); return d ? d.getTime() : 0; };
+    const err = cands.sort((a, b) => t(b) - t(a))[0]
+      || { code: code || (state.screen === 'yellow-no-internet' ? 'no-internet' : 'no-picture'), channel: state.channel, url };
+    const tr = streamCodeText(err.code, err.message);
+    const message = typeof err.message === 'string' ? err.message : '';
+    const raw = !message ? tr.code : message.startsWith(tr.code) ? message : `${tr.code}: ${message}`;
+    const attempt = isInt(err.attempt) && err.attempt > 0 ? err.attempt : null;
+    return { title: tr.text, hint: tr.hint, code: tr.code, raw, attempt, time: parseTime(err.time),
+      channel: typeof err.channel === 'string' ? err.channel : typeof state.channel === 'string' ? state.channel : '',
+      url: typeof err.url === 'string' ? err.url : url,
+      head: `${tr.text} (${tr.code}${attempt ? `, Versuch ${attempt}` : ''})` };
+  }
+  /** "host/.../last-part" so that a long stream address fits a phone line. */
+  function shortUrl(u) {
+    const m = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)([^?#]*)/i.exec(typeof u === 'string' ? u : '');
+    if (!m) return typeof u === 'string' ? u.slice(0, 60) : '';
+    const parts = m[2].split('/').filter(Boolean);
+    if (parts.length <= 1) return m[1] + (parts.length ? '/' + parts[0] : '');
+    return `${m[1]}/.../${parts[parts.length - 1]}`;
+  }
+
+  function intIn(v, min, max, d) { return isInt(v) && v >= min && v <= max ? v : d; }
+  /** The remembered "Nachricht jetzt senden" inputs, made safe whatever the storage holds. */
+  function messageDraft(raw) {
+    const o = raw && typeof raw === 'object' ? raw : {};
+    const p = o.pres && typeof o.pres === 'object' ? o.pres : {};
+    return { text: typeof o.text === 'string' ? o.text.slice(0, LIMITS.text) : '',
+      pres: { mode: MODES.includes(p.mode) ? p.mode : 'both', keyOnly: p.keyOnly !== false,
+        seconds: intIn(p.seconds, 1, LIMITS.showSeconds, 30), repeat: intIn(p.repeat, LIMITS.repeatMin, LIMITS.repeatMax, 1),
+        pause: intIn(p.pause, 0, LIMITS.pause, 5) } };
+  }
+
+  function backupJson(models, d) {
+    return JSON.stringify({ app: 'minitv', kind: 'schedule', version: 1, schedule: models.map(m => storedFromModel(m, d)) }, null, 2);
+  }
+
+  /* German texts for the app's (English) answers. The app's message stays the last word: unknown ones are shown as
+   * they are. */
+  const FIELD_DE = { show_seconds: 'Anzeigedauer (Sekunden)', repeat: 'Wie oft sprechen', pause: 'Pause (Sekunden)' };
+  function translateEntryProblem(p) {
+    const map = {
+      'not an object': 'ist ungültig.',
+      'text 1 to 500 characters': 'Der Text muss 1 bis 500 Zeichen lang sein.',
+      'from as HH:mm': 'Die Anfangszeit ist ungültig.',
+      'to as HH:mm': 'Die Endzeit ist ungültig.',
+      'every 1 to 1440 minutes': 'Der Abstand muss zwischen 1 Minute und 24 Stunden liegen.',
+      'enabled true or false': 'Ein/Aus ist ungültig.',
+      'mode text, speech or both': 'Bitte Bildschirm, Sprache oder Beides wählen.',
+      'speak true or false': 'Der alte Schlüssel "speak" ist ungültig.',
+    };
+    if (map[p]) return map[p];
+    const r = /^(show_seconds|repeat|pause) (\d+) to (\d+)$/.exec(p);
+    if (r) return `${FIELD_DE[r[1]]}: erlaubt sind ${r[2]} bis ${r[3]}.`;
+    return p;
+  }
+  function translateAppMessage(msg, labels) {
+    const s = String(msg == null ? '' : msg).trim();
+    if (!s) return '';
+    if (s.includes('; ')) return s.split(/;\s*/).filter(Boolean).map(x => translateAppMessage(x, labels)).join(' ');
+    let r;
+    if (s === 'ok') return 'Erledigt.';
+    if (s === 'disabled') return 'Diese Funktion ist am Fernseher abgeschaltet.';
+    if (s === 'not a JSON object') return 'Der Fernseher konnte die Angaben nicht lesen.';
+    if (s === 'schedule: not a JSON array') return 'Der Fernseher konnte die Liste nicht lesen.';
+    if (s === 'schedule: 20 entries at most') return 'Höchstens 20 Erinnerungen sind möglich.';
+    if ((r = /^schedule\[(\d+)\]: (.*)$/.exec(s))) return `Erinnerung ${Number(r[1]) + 1}: ${translateEntryProblem(r[2])}`;
+    if ((r = /^unknown setting (\S+)$/.exec(s))) return `Der Fernseher kennt die Einstellung "${r[1]}" nicht (ältere App?).`;
+    const label = k => (labels && labels[k]) || k;
+    if ((r = /^(\w+): (-?\d+) to (\d+)$/.exec(s))) return `${label(r[1])}: erlaubt sind ${r[2]} bis ${r[3]}.`;
+    if ((r = /^(\w+): expected on or off$/.exec(s))) return `${label(r[1])}: bitte Ein oder Aus.`;
+    if ((r = /^(\w+): expected a number/.exec(s))) return `${label(r[1])}: bitte eine Zahl.`;
+    if ((r = /^jitsi_room: /.exec(s))) return 'Videoanruf-Raum: nur Buchstaben, Ziffern und - _ . (höchstens 64).';
+    if ((r = /^(show_seconds|repeat|pause) (\d+) to (\d+)$/.exec(s)) || /^mode /.test(s)) return translateEntryProblem(s);
+    return `Der Fernseher meldet: ${s}`;
+  }
+
+  return { DAY, MODES, MODE_LABEL, LIMITS, parseHM, fmtHM, inside, fireTimes, nextTimesToday, whenFromStored,
+    whenToStored, everyMinutes, crossesMidnight, everyText, summary, preview, slugify, uniqueId, ensureIds,
+    presDefaults, presFromMessage, presToMessage, presProblems, describePres, showSeconds, modelFromStored,
+    modelsFromPreset, blankModel, copyModel, storedFromModel, messageFromPres, textProblems, modelProblems, listProblems,
+    parseBackup, backupJson, translateAppMessage, stableStringify, normScalar, normEntry, sameSchedule, sameSettings,
+    scheduleToSend, stopText, parseTime, clockText, relativeTime, offlineInfo, messageDraft, streamCodeText,
+    streamProblem, shortUrl };
+})();
+/* ==== END LOGIC ==== */
+
+/* ==== BEGIN MQTT: MQTT 3.1.1 over WebSocket, no library ==== */
+const Mqtt = (() => {
+  const enc = new TextEncoder();
+  // Not fatal: binary or broken UTF-8 from the broker becomes replacement characters instead of an exception.
+  const dec = new TextDecoder('utf-8');
+  const T = { CONNECT: 1, CONNACK: 2, PUBLISH: 3, PUBACK: 4, PUBREC: 5, PUBREL: 6, PUBCOMP: 7, SUBSCRIBE: 8,
+    SUBACK: 9, PINGREQ: 12, PINGRESP: 13, DISCONNECT: 14 };
+
+  function concat(parts) {
+    let len = 0;
+    for (const p of parts) len += p.length;
+    const out = new Uint8Array(len);
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  }
+  const u16 = n => Uint8Array.of((n >> 8) & 255, n & 255);
+  function str(s) {
+    const b = enc.encode(s);
+    if (b.length > 65535) throw new Error('string too long');
+    return concat([u16(b.length), b]);
+  }
+  function remainingLength(n) {
+    const out = [];
+    do {
+      let d = n % 128;
+      n = Math.floor(n / 128);
+      if (n > 0) d |= 128;
+      out.push(d);
+    } while (n > 0);
+    return Uint8Array.from(out);
+  }
+  function packet(first, parts) {
+    const body = concat(parts);
+    return concat([Uint8Array.of(first), remainingLength(body.length), body]);
+  }
+
+  function connect({ clientId, username, password, keepAlive, clean = true }) {
+    let flags = clean ? 0x02 : 0;
+    const payload = [str(clientId)];
+    if (username) {
+      flags |= 0x80;
+      payload.push(str(username));
+      // MQTT 3.1.1 allows a password only together with a user name.
+      if (password) { flags |= 0x40; payload.push(str(password)); }
+    }
+    return packet(0x10, [str('MQTT'), Uint8Array.of(4, flags), u16(keepAlive), ...payload]);
+  }
+  function subscribe(id, subs) {
+    return packet(0x82, [u16(id), ...subs.flatMap(s => [str(s.topic), Uint8Array.of(s.qos)])]);
+  }
+  function publish({ topic, payload, qos = 0, retain = false, id = 0, dup = false }) {
+    const first = 0x30 | (dup ? 8 : 0) | (qos << 1) | (retain ? 1 : 0);
+    const parts = [str(topic)];
+    if (qos > 0) parts.push(u16(id));
+    parts.push(typeof payload === 'string' ? enc.encode(payload) : payload);
+    return packet(first, parts);
+  }
+  const ack = (type, id) => packet(type << 4 | (type === T.PUBREL ? 2 : 0), [u16(id)]);
+  const pingreq = () => Uint8Array.of(0xC0, 0);
+  const disconnect = () => Uint8Array.of(0xE0, 0);
+
+  /** Splits a byte stream into packets; WebSocket frames need not line up with packets, so it buffers. */
+  class Parser {
+    constructor() { this.buf = new Uint8Array(0); }
+    push(chunk) {
+      this.buf = this.buf.length ? concat([this.buf, chunk]) : chunk;
+      const out = [];
+      for (let p = this.next(); p; p = this.next()) out.push(p);
+      return out;
+    }
+    next() {
+      const b = this.buf;
+      if (b.length < 2) return null;
+      let len = 0, mult = 1, i = 1;
+      for (;;) {
+        if (i >= b.length) return null;
+        const d = b[i++];
+        len += (d & 127) * mult;
+        if (!(d & 128)) break;
+        mult *= 128;
+        if (i > 4) throw new Error('malformed remaining length');
+      }
+      if (b.length < i + len) return null;
+      const pkt = { type: b[0] >> 4, flags: b[0] & 15, body: b.slice(i, i + len) };
+      this.buf = b.slice(i + len);
+      return pkt;
+    }
+  }
+
+  function decodePublish(pkt) {
+    const b = pkt.body, qos = (pkt.flags >> 1) & 3;
+    if (b.length < 2) throw new Error('short publish');
+    const tl = (b[0] << 8) | b[1];
+    let pos = 2 + tl;
+    if (pos > b.length) throw new Error('short publish');
+    const topic = dec.decode(b.subarray(2, pos));
+    let id = 0;
+    if (qos > 0) {
+      if (pos + 2 > b.length) throw new Error('short publish');
+      id = (b[pos] << 8) | b[pos + 1];
+      pos += 2;
+    }
+    return { topic, payload: b.subarray(pos), qos, retain: (pkt.flags & 1) === 1, dup: (pkt.flags & 8) === 8, id };
+  }
+  const text = payload => dec.decode(payload);
+
+  /**
+   * A client with reconnect. States: connecting, connected, reconnecting, stopped, failed.
+   * opts: url, clientId, username, password, keepAlive (s), subscriptions [{topic,qos}],
+   *       onState(state, detail), onMessage({topic,payload,retain,qos}), onSubscribeDenied(topics)
+   */
+  class Client {
+    constructor(opts) {
+      this.o = opts;
+      this.ws = null;
+      this.state = 'idle';
+      this.packetId = 0;
+      this.pending = new Map();
+      this.retryDelay = 1000;
+      this.everConnected = false;
+      this.stopped = false;
+    }
+    start() { this.stopped = false; this.open(); }
+    stop() {
+      this.stopped = true;
+      clearTimeout(this.retryTimer);
+      const ws = this.ws;
+      if (ws) {
+        if (this.state === 'connected') this.send(disconnect());
+        this.ws = null;
+        this.cleanup(new Error('stopped'));
+        try { ws.close(1000); } catch (e) { /* already closed */ }
+      }
+      this.setState('stopped');
+    }
+    /** Connects now when waiting for a retry (the page came back to the front, the network is back). */
+    retryNow() {
+      if (this.state === 'reconnecting' && !this.ws && !this.stopped) { clearTimeout(this.retryTimer); this.open(); }
+    }
+    setState(state, detail = {}) {
+      this.state = state;
+      if (this.o.onState) this.o.onState(state, detail);
+    }
+    nextId() { this.packetId = this.packetId % 65535 + 1; return this.packetId; }
+    send(bytes) {
+      if (!this.ws || this.ws.readyState !== 1) return false;
+      this.ws.send(bytes);
+      this.lastSend = Date.now();
+      return true;
+    }
+    open() {
+      let ws;
+      try {
+        ws = new WebSocket(this.o.url, ['mqtt']);
+      } catch (e) {
+        this.stopped = true;
+        this.setState('failed', { reason: 'url' });
+        return;
+      }
+      ws.binaryType = 'arraybuffer';
+      this.ws = ws;
+      this.parser = new Parser();
+      this.opened = false;
+      this.connacked = false;
+      this.refused = 0;
+      this.setState(this.everConnected ? 'reconnecting' : 'connecting', {});
+      // A port that accepts TCP but never speaks WebSocket would leave the socket opening for minutes.
+      this.openTimer = setTimeout(() => this.drop(), 15000);
+      ws.onopen = () => {
+        if (ws !== this.ws) return;
+        clearTimeout(this.openTimer);
+        this.opened = true;
+        this.lastRecv = Date.now();
+        this.send(connect({ clientId: this.o.clientId, username: this.o.username, password: this.o.password,
+          keepAlive: this.o.keepAlive, clean: true }));
+        this.connackTimer = setTimeout(() => this.drop(), 10000);
+      };
+      ws.onmessage = ev => {
+        if (ws !== this.ws) return;
+        // MQTT over WebSocket uses binary frames only; a text frame is ignored rather than misparsed.
+        if (!(ev.data instanceof ArrayBuffer)) return;
+        this.lastRecv = Date.now();
+        try {
+          for (const p of this.parser.push(new Uint8Array(ev.data))) this.handle(p);
+        } catch (e) {
+          this.drop();
+        }
+      };
+      // Some WebSocket implementations report a failed opening only as an error, without a close event.
+      ws.onerror = () => {
+        if (ws !== this.ws) return;
+        this.closed();
+        try { ws.close(); } catch (e) { /* closed already */ }
+      };
+      ws.onclose = () => { if (ws === this.ws) this.closed(); };
+    }
+    drop() { try { this.ws && this.ws.close(); } catch (e) { /* closing anyway */ } }
+    handle(p) {
+      switch (p.type) {
+      case T.CONNACK: {
+        clearTimeout(this.connackTimer);
+        const rc = p.body.length >= 2 ? p.body[1] : 255;
+        if (rc !== 0) {
+          this.refused = rc;
+          this.drop();
+          return;
+        }
+        this.connacked = true;
+        this.everConnected = true;
+        this.retryDelay = 1000;
+        this.subId = this.nextId();
+        this.send(subscribe(this.subId, this.o.subscriptions));
+        this.keepTimer = setInterval(() => this.keepAlive(), 5000);
+        this.setState('connected');
+        break;
+      }
+      case T.PUBLISH: {
+        const m = decodePublish(p);
+        if (m.qos === 1) this.send(ack(T.PUBACK, m.id));
+        else if (m.qos === 2) this.send(ack(T.PUBREC, m.id));
+        if (this.o.onMessage) {
+          try { this.o.onMessage(m); } catch (e) { /* a broken handler must not kill the connection */ }
+        }
+        break;
+      }
+      case T.PUBREL: this.send(ack(T.PUBCOMP, (p.body[0] << 8) | p.body[1])); break;
+      case T.PUBACK: {
+        const id = (p.body[0] << 8) | p.body[1];
+        const w = this.pending.get(id);
+        if (w) { clearTimeout(w.timer); this.pending.delete(id); w.resolve(); }
+        break;
+      }
+      case T.SUBACK: {
+        const codes = Array.from(p.body.subarray(2));
+        const denied = this.o.subscriptions.filter((s, i) => codes[i] === 0x80).map(s => s.topic);
+        if (denied.length && this.o.onSubscribeDenied) this.o.onSubscribeDenied(denied);
+        break;
+      }
+      default: break; // PINGRESP and others: lastRecv was updated already
+      }
+    }
+    keepAlive() {
+      const ka = this.o.keepAlive * 1000, now = Date.now();
+      // No sign of life for 1.5 keep-alive periods: the connection is dead even if the socket does not know yet.
+      if (now - this.lastRecv > ka * 1.5) { this.drop(); return; }
+      if (now - this.lastSend >= ka / 2) this.send(pingreq());
+    }
+    cleanup(err) {
+      clearTimeout(this.openTimer);
+      clearTimeout(this.connackTimer);
+      clearInterval(this.keepTimer);
+      for (const w of this.pending.values()) { clearTimeout(w.timer); w.reject(err); }
+      this.pending.clear();
+    }
+    closed() {
+      this.ws = null;
+      this.cleanup(new Error('disconnected'));
+      if (this.stopped) return;
+      if (this.refused) {
+        // 3 = server unavailable is worth retrying; bad credentials or a refused client id are not.
+        if (this.refused !== 3) {
+          this.stopped = true;
+          this.setState('failed', { reason: 'refused', code: this.refused });
+          return;
+        }
+      }
+      if (!this.everConnected && !this.connacked) {
+        this.stopped = true;
+        this.setState('failed', { reason: this.opened ? 'handshake' : 'unreachable', code: this.refused });
+        return;
+      }
+      const delay = Math.round(this.retryDelay * (0.8 + Math.random() * 0.4));
+      this.retryDelay = Math.min(this.retryDelay * 2, 30000);
+      this.retryTimer = setTimeout(() => this.open(), delay);
+      this.setState('reconnecting', { delay });
+    }
+    /** Publishes text; QoS 1 resolves at the broker's PUBACK. */
+    publish(topic, payload, qos = 1, retain = false) {
+      return new Promise((resolve, reject) => {
+        if (this.state !== 'connected') { reject(new Error('not connected')); return; }
+        const id = qos > 0 ? this.nextId() : 0;
+        if (!this.send(publish({ topic, payload, qos, id, retain }))) { reject(new Error('not connected')); return; }
+        if (qos === 0) { resolve(); return; }
+        const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('timeout')); }, 10000);
+        this.pending.set(id, { resolve, reject, timer });
+      });
+    }
+  }
+
+  return { T, Parser, Client, decodePublish, text, build: { connect, subscribe, publish, ack, pingreq, disconnect } };
+})();
+/* ==== END MQTT ==== */
+
+/* ==== BEGIN SYNC: desired state of one setting (schedule or config) kept in sync with the TV, unit-tested ==== */
+const Sync = (() => {
+  const RETRIES = 3, CONFIRM_MS = 15000, BACKOFF_MS = 2000;
+  /*
+   * Retained only while the TV is not online. A retained command reaches a TV that is online as a normal command
+   * (MQTT 3.1.1 clears the flag for existing subscriptions), so the TV runs it but never clears it, and it would be run
+   * again at the TV's next start, undoing changes made elsewhere since. A TV that is offline gets it at its next
+   * connect with the flag set, runs it once and clears it (the app's "retained commands" rule).
+   */
+  const RETAIN_WHEN_ONLINE = false;
+
+  /**
+   * One channel of desired state. The page edits "desired"; the TV's retained config is the truth. Something is sent
+   * only for a user edit, a bounded retry, or a change of the link (reconnect, TV going offline), never because an
+   * incoming value was adopted, so two open pages cannot start a ping-pong.
+   * o: send(value, retain) -> Promise (resolves at PUBACK), same(a, b) -> bool, clock {set(fn, ms), clear(id)},
+   *    onAdopt(value) (an incoming value replaces the page's state), onStatus(channel)
+   * status: idle | pending | confirmed | error | offline-wait; message: retry | no-answer | tv | connection | the TV's text
+   * owner: who has an unconfirmed desired value: 'self' (this page), 'other' (another editor), null
+   */
+  class Channel {
+    constructor(o) {
+      this.o = o;
+      this.desired = undefined;
+      this.tv = undefined;
+      this.owner = null;
+      this.typing = false;
+      this.status = 'idle';
+      this.message = '';
+      this.attempts = 0;
+      this.timer = 0;
+      this.seq = 0;
+      this.connected = false;
+      this.tvOnline = false;
+    }
+    get local() { return this.owner === 'self' || this.typing; }
+    set(status, message = '') {
+      this.status = status;
+      this.message = message;
+      if (this.o.onStatus) this.o.onStatus(this);
+    }
+    stopTimer() { if (this.timer) { this.o.clock.clear(this.timer); this.timer = 0; } }
+    waitConfirm() { this.stopTimer(); this.timer = this.o.clock.set(() => { this.timer = 0; this.timeout(); }, CONFIRM_MS); }
+    /** An edit is being typed: until it is committed, incoming values must not overwrite it. */
+    touch() { this.typing = true; }
+    edit(value) {
+      this.typing = false;
+      if (this.desired !== undefined && this.o.same(value, this.desired) && this.owner !== 'other') {
+        if (this.o.onStatus) this.o.onStatus(this);
+        return;
+      }
+      this.desired = value;
+      this.owner = 'self';
+      this.attempts = 0;
+      this.publish();
+    }
+    publish(message = '') {
+      this.stopTimer();
+      if (!this.connected) { this.set('offline-wait', 'connection'); return; }
+      const seq = ++this.seq;
+      this.set(this.tvOnline ? 'pending' : 'offline-wait', this.tvOnline ? message : 'tv');
+      this.o.send(this.desired, RETAIN_WHEN_ONLINE || !this.tvOnline).then(() => {
+        if (seq === this.seq && this.owner === 'self' && this.status === 'pending') this.waitConfirm();
+      }, () => {
+        // The connection broke; link() sends it again after the reconnect.
+        if (seq === this.seq && this.owner === 'self') this.set('offline-wait', 'connection');
+      });
+    }
+    timeout() {
+      if (!this.tvOnline) return;
+      if (this.owner === 'other') { this.owner = null; this.adopt(this.tv); return; }
+      if (this.owner !== 'self') return;
+      if (this.attempts >= RETRIES) { this.set('error', 'no-answer'); return; }
+      this.attempts++;
+      this.set('pending', 'retry');
+      this.timer = this.o.clock.set(() => { this.timer = 0; this.publish('retry'); }, BACKOFF_MS * 2 ** (this.attempts - 1));
+    }
+    adopt(value) {
+      this.desired = value;
+      this.set('confirmed');
+      this.o.onAdopt(value);
+    }
+    confirm() {
+      this.owner = null;
+      this.attempts = 0;
+      this.stopTimer();
+      this.set('confirmed');
+    }
+    /** The TV's state (from its retained config). */
+    fromTv(value) {
+      this.tv = value;
+      if (this.desired !== undefined && this.o.same(value, this.desired)) { this.confirm(); return; }
+      // Local edits win (retries send them again); another editor's command is still on its way to the TV.
+      if (this.local || this.owner === 'other') { if (this.o.onStatus) this.o.onStatus(this); return; }
+      this.adopt(value);
+    }
+    /** A command seen on the broker: this page's own echo, or another editor's. */
+    fromCommand(value) {
+      if (this.desired !== undefined && this.o.same(value, this.desired)) return;
+      if (this.local) return;
+      if (this.tv !== undefined && this.o.same(value, this.tv)) { this.owner = null; this.adopt(value); return; }
+      this.owner = 'other';
+      this.desired = value;
+      this.o.onAdopt(value);
+      this.set(this.tvOnline ? 'pending' : 'offline-wait', this.tvOnline ? '' : 'tv');
+      if (this.tvOnline) this.waitConfirm();
+    }
+    /** The TV's answer on result to the command of this channel. */
+    fromResult(ok, message) {
+      if (ok) return;
+      if (this.owner === 'self' && (this.status === 'pending' || this.status === 'offline-wait')) {
+        this.stopTimer();
+        this.set('error', message);
+      } else if (this.owner === 'other') {
+        this.stopTimer();
+        this.owner = null;
+        if (this.tv !== undefined) this.adopt(this.tv);
+      }
+    }
+    link(connected, tvOnline) {
+      const wasConnected = this.connected, wasOnline = this.tvOnline;
+      this.connected = connected;
+      this.tvOnline = tvOnline;
+      if (this.owner === 'self' && this.status !== 'error') {
+        if (!connected) { this.stopTimer(); this.set('offline-wait', 'connection'); }
+        // After a reconnect send again; when the TV went away send it retained so that it gets it at its next start.
+        else if (!wasConnected || (wasOnline && !tvOnline)) this.publish();
+        // It was sent retained: the TV runs it when it is back, which is what to wait for now.
+        else if (tvOnline && !wasOnline) { this.set('pending'); this.waitConfirm(); }
+      } else if (this.owner === 'other') {
+        if (tvOnline && !wasOnline) { this.set('pending'); this.waitConfirm(); }
+        else if (!tvOnline) { this.stopTimer(); this.set('offline-wait', 'tv'); }
+      } else if (this.o.onStatus) {
+        this.o.onStatus(this);
+      }
+    }
+  }
+  return { Channel, RETRIES, CONFIRM_MS, BACKOFF_MS };
+})();
+/* ==== END SYNC ==== */
+
+/* ==== Settings of the app shown in the "Einstellungen" card ==== */
+const VOICES = [
+  ['de-DE-SeraphinaMultilingualNeural', 'Seraphina (weiblich)'], ['de-DE-KatjaNeural', 'Katja (weiblich)'],
+  ['de-DE-AmalaNeural', 'Amala (weiblich)'], ['de-DE-ConradNeural', 'Conrad (männlich)'],
+  ['de-DE-FlorianMultilingualNeural', 'Florian (männlich)'], ['de-DE-KillianNeural', 'Killian (männlich)'],
+  ['de-AT-IngridNeural', 'Ingrid (Österreich)'], ['de-AT-JonasNeural', 'Jonas (Österreich)'],
+  ['de-CH-LeniNeural', 'Leni (Schweiz)'], ['de-CH-JanNeural', 'Jan (Schweiz)'],
+];
+const RATES = [['-30%', 'deutlich langsamer'], ['-20%', 'langsamer'], ['-10%', 'etwas langsamer'], ['-5%', 'ein wenig langsamer'],
+  ['+0%', 'normal'], ['+10%', 'etwas schneller'], ['+20%', 'schneller']];
+const SETTINGS = [
+  { group: 'Gerät', key: 'device_name', type: 'text', label: 'Name des Fernsehers', help: 'So heißt der Fernseher in Home Assistant und im Videoanruf',
+    pattern: /^[^\u0000-\u001f]{0,40}$/, patternHint: 'höchstens 40 Zeichen' },
+  { group: 'Bildschirm', key: 'clock', type: 'bool', label: 'Uhrzeit oben rechts anzeigen', def: false },
+  { group: 'Bildschirm', key: 'header', type: 'bool', label: 'Sendername beim Umschalten oben anzeigen', def: false },
+  { group: 'Bildschirm', key: 'header_number', type: 'bool', label: 'Sendernummer vor dem Namen', def: false },
+  { group: 'Bildschirm', key: 'header_mode', type: 'select', label: 'Sendername bleibt', def: 'picture',
+    options: [['picture', 'bis das Bild da ist'], ['seconds', 'eine feste Zeit']] },
+  { group: 'Bildschirm', key: 'header_seconds', type: 'number', label: 'Feste Zeit für den Sendernamen', unit: 'Sekunden', min: 1, max: 60, def: 3 },
+  { group: 'Bildschirm', key: 'footer', type: 'bool', label: 'Sendung und Uhrzeit unten nach dem Umschalten', def: false },
+  { group: 'Bildschirm', key: 'footer_seconds', type: 'number', label: 'So lange bleibt die Zeile unten', unit: 'Sekunden', min: 1, max: 60, def: 6 },
+  { group: 'Bildschirm', key: 'guide', type: 'bool', label: 'Senderliste und Sendungstexte', def: undefined },
+  { group: 'Nachrichten', key: 'message_mode', type: 'select', label: 'Nachrichten erscheinen als', def: 'text',
+    options: [['text', 'Bildschirm'], ['speech', 'Sprache'], ['both', 'Bildschirm und Sprache']] },
+  { group: 'Nachrichten', key: 'message_seconds', type: 'number', label: 'So lange bleibt eine Nachricht', help: '0 = bis eine Taste gedrückt wird', unit: 'Sekunden', min: 0, max: 3600, def: 0 },
+  { group: 'Sprache', key: 'speech', type: 'bool', label: 'Der Fernseher darf sprechen', def: true },
+  { group: 'Sprache', key: 'speak_channel', type: 'bool', label: 'Sendername beim Umschalten ansagen', def: false },
+  { group: 'Sprache', key: 'speech_voice', type: 'select', label: 'Stimme', def: 'de-DE-SeraphinaMultilingualNeural', options: VOICES },
+  { group: 'Sprache', key: 'speech_rate', type: 'select', label: 'Sprechtempo', def: '-5%', options: RATES },
+  { group: 'Sprache', key: 'speech_volume', type: 'number', label: 'Lautstärke der Sprache', unit: 'Prozent', min: 0, max: 100, def: 100 },
+  { group: 'Sprache', key: 'speech_boost_db', type: 'number', label: 'Sprache zusätzlich lauter', unit: 'dB', min: 0, max: 15, def: 10 },
+  { group: 'Sprache', key: 'speech_repeat', type: 'number', label: 'Wie oft ein Text gesprochen wird', unit: 'mal', min: 1, max: 10, def: 1 },
+  { group: 'Sprache', key: 'speech_pause', type: 'number', label: 'Pause zwischen den Wiederholungen', unit: 'Sekunden', min: 0, max: 60, def: 5 },
+  { group: 'Sprache', key: 'speech_duck_percent', type: 'number', label: 'Fernsehton während des Sprechens', unit: 'Prozent', min: 0, max: 100, def: 8 },
+  { group: 'Sprache', key: 'speech_cache_mb', type: 'number', label: 'Speicher für gesprochene Texte', unit: 'MB', min: 10, max: 200, def: 200 },
+  { group: 'Videoanruf', key: 'jitsi_room', type: 'text', label: 'Raum für die grüne Taste', help: 'leer = die grüne Taste tut nichts', def: '',
+    pattern: /^$|^(?=.*[A-Za-z0-9])[A-Za-z0-9._-]{1,64}$/, patternHint: 'nur Buchstaben, Ziffern und - _ . (höchstens 64)' },
+  { group: 'Videoanruf', key: 'jitsi_max_minutes', type: 'number', label: 'Ein Anruf endet von selbst nach', help: '0 = nie', unit: 'Minuten', min: 0, max: 1440, def: 120 },
+];
+const SETTING_LABELS = Object.fromEntries(SETTINGS.map(s => [s.key, s.label]));
+// Settings the editor handles elsewhere (schedule) are not shown as controls.
+// ivona and ivona_voices are what the TV reports about its speech engine (see speechVoiceSpec), not settings.
+const SETTINGS_HIDDEN = ['schedule', 'ivona', 'ivona_voices'];
+
+/* ==== Page ==== */
+// status first: the retained commands at the end are judged by whether the TV is online.
+const TOPICS = ['status', 'state', 'telemetry', 'config', 'channels', 'result', 'errors', 'set/schedule', 'set/config'];
+const STORE_KEY = 'minitv-config.v1';
+const MSG_STORE_KEY = STORE_KEY + '.message';
+const $ = sel => document.querySelector(sel);
+
+const S = {
+  client: null, base: '', conn: 'idle',
+  status: null, tv: null, telemetry: null, config: null, channels: [],
+  reminders: [], lastValid: new Map(), settings: {}, settingsDraft: {}, settingViews: {}, groupViews: [],
+  sync: {}, debounce: { schedule: 0, config: 0 }, liveStreamError: null, waiters: [], log: [], statusTimer: 0,
+};
+
+/** Builds an element; text always goes through textContent, so broker data can never become markup. */
+function el(tag, props = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = String(v);
+    else if (k.startsWith('on') && typeof v === 'function') n.addEventListener(k.slice(2), v);
+    else if (typeof v !== 'string' && k in n) n[k] = v;
+    else n.setAttribute(k, v === true ? '' : String(v));
+  }
+  for (const c of kids.flat()) if (c !== null && c !== undefined && c !== false) n.append(c instanceof Node ? c : String(c));
+  return n;
+}
+/** Text for display: never "null" or "undefined". */
+function show(v, fallback = '-') {
+  if (v === null || v === undefined || v === '' || (typeof v === 'number' && !Number.isFinite(v))) return fallback;
+  return String(v);
+}
+function setStatus(node, text, kind = '') {
+  node.textContent = text || '';
+  node.className = node.className.replace(/\b(ok|warn|err)\b/g, '').trim() + (kind ? ' ' + kind : '');
+}
+function tryJson(text) { try { return JSON.parse(text); } catch (e) { return undefined; } }
+function isObj(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
+function nowMinutes() { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function defaults() { return Logic.presDefaults(S.config); }
+function intOrNaN(input) { const s = input.value.trim(); return s === '' ? NaN : Number(s); }
+
+/* ---- Connection ---- */
+// localStorage can be missing or throw (private mode, blocked site data): then nothing is remembered.
+function storeGet(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (e) { return {}; }
+}
+function storeSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* nothing is remembered */ }
+}
+function loadStore() { return storeGet(STORE_KEY); }
+function saveStore() {
+  const remember = $('#cRemember').checked;
+  const data = { url: $('#cUrl').value.trim(), user: $('#cUser').value.trim(), base: $('#cBase').value.trim(), remember };
+  if (remember) data.password = $('#cPass').value;
+  storeSet(STORE_KEY, data);
+}
+// The pick list at the top shows only what the broker shows now (the retained status of every box). Nothing is
+// remembered between visits, so a box that is gone from the broker cannot stay as a phantom. A list saved by an
+// older version of this page is deleted at the start.
+const BOXES_KEY = 'minitv-config.boxes.v1';
+// Boxes found on the broker this session: topic base -> 'online' | 'offline'.
+const found = new Map();
+function renderBoxes() {
+  const sel = $('#boxSelect');
+  const cur = cleanBase($('#cBase').value);
+  const list = [...found.keys()].map(base => ({ base, label: '' }));
+  list.sort((a, b) => a.base.localeCompare(b.base, 'de'));
+  const stateDe = { online: ' - an', offline: ' - aus' };
+  sel.replaceChildren(...list.map(b => el('option', { value: b.base,
+    text: (b.label ? `${b.label} (${b.base})` : b.base) + (stateDe[found.get(b.base)] || '') })),
+    ...(list.length ? [] : [el('option', { value: '', text: S.conn === 'connected' ? 'Keinen Fernseher gefunden' : 'Bitte zuerst verbinden' })]));
+  sel.value = list.some(b => b.base === cur) ? cur : '';
+}
+/*
+ * The list of boxes follows the broker: every status message adds or updates a box, a cleared one removes it. A page
+ * that was asleep or lost the connection may have missed some, and the broker sends retained messages only for a new
+ * subscription, so every 30 s and when the page comes back to the foreground a second, short-lived connection (the
+ * scout) subscribes to the status topics from scratch. What it hears is the truth: boxes it did not hear are dropped.
+ */
+let scouting = false;
+function scoutBoxes() {
+  if (scouting || !S.client || S.conn !== 'connected') return;
+  scouting = true;
+  const seen = new Map();
+  const rnd = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2, '0')).join('');
+  const scout = new Mqtt.Client({
+    url: $('#cUrl').value.trim(), clientId: 'minitv-scout-' + rnd, username: $('#cUser').value.trim(), password: $('#cPass').value,
+    keepAlive: 60, subscriptions: [{ topic: '+/status', qos: 1 }, { topic: '+/+/status', qos: 1 }],
+    onState() {},
+    onMessage(m) {
+      if (!m.topic.endsWith('/status') || m.topic.startsWith('$') || !m.payload.length) return;
+      const data = tryJson(Mqtt.text(m.payload));
+      seen.set(m.topic.slice(0, -'/status'.length), isObj(data) && data.state === 'online' ? 'online' : 'offline');
+    },
+  });
+  scout.start();
+  setTimeout(() => {
+    scout.stop();
+    scouting = false;
+    // Nothing heard at all means the scout itself failed, not that every box is gone: then the list stays.
+    if (!seen.size) return;
+    found.clear();
+    for (const [base, state] of seen) found.set(base, state);
+    renderBoxes();
+  }, 3500);
+}
+setInterval(scoutBoxes, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scoutBoxes(); });
+function pickBox() {
+  const base = $('#boxSelect').value;
+  if (!base) {
+    return;
+  }
+  $('#cBase').value = base;
+  connect();
+}
+function cleanBase(s) { return s.trim().replace(/^\/+|\/+$/g, ''); }
+
+function connect() {
+  const url = $('#cUrl').value.trim(), base = cleanBase($('#cBase').value);
+  const conn = $('#connStatus');
+  if (!/^wss?:\/\/[^\s/]+/i.test(url)) {
+    setStatus(conn, 'Die Server-Adresse muss mit wss:// beginnen, zum Beispiel wss://name.emqxsl.com:8084/mqtt.', 'err');
+    $('#cUrl').focus();
+    return;
+  }
+  if (/[#+\s]/.test(base)) {
+    setStatus(conn, 'Bitte den Namen des Fernsehers (Themen-Basis) eingeben, ohne Leerzeichen, # oder +.', 'err');
+    $('#cBase').focus();
+    return;
+  }
+  $('#cBase').value = base;
+  renderBoxes();
+  saveStore();
+  if (S.client) S.client.stop();
+  resetTv();
+  S.base = base;
+  // Another TV (or the same one again): start from its retained state, nothing of the previous one carries over.
+  makeChannels();
+  S.reminders = [];
+  S.lastValid = new Map();
+  S.settings = {};
+  S.settingsDraft = {};
+  $('#remEditor').disabled = true;
+  renderReminders();
+  renderSettings();
+  const rnd = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2, '0')).join('');
+  S.client = new Mqtt.Client({
+    url, clientId: 'minitv-config-' + rnd, username: $('#cUser').value.trim(), password: $('#cPass').value,
+    // The retained status of every box on the broker fills the pick list; a TV topic has one or two levels.
+    keepAlive: 60, subscriptions: [...(base ? TOPICS.map(t => ({ topic: base + '/' + t, qos: 1 })) : []),
+      { topic: '+/status', qos: 1 }, { topic: '+/+/status', qos: 1 }],
+    onState: connState, onMessage, onSubscribeDenied: denied => { if (base && denied.some(t => t.startsWith(base + '/'))) setStatus($('#connStatus'),
+      'Verbunden, aber dieser Benutzer darf den Fernseher nicht lesen. Bitte den Namen des Fernsehers (Themen-Basis) prüfen.', 'err'); },
+  });
+  S.client.start();
+}
+function disconnect() {
+  if (S.client) S.client.stop();
+  S.client = null;
+}
+
+const REFUSED = {
+  1: 'Der Server versteht diese Version nicht (MQTT 3.1.1 wird benötigt).',
+  2: 'Der Server lehnt die Verbindung ab (Kennung).',
+  3: 'Der Server ist gerade nicht verfügbar. Bitte später noch einmal versuchen.',
+  4: 'Benutzername oder Passwort ist falsch.',
+  5: 'Benutzername oder Passwort ist falsch (keine Berechtigung).',
+};
+function connState(state, d) {
+  S.conn = state;
+  const conn = $('#connStatus');
+  const connected = state === 'connected';
+  $('#btnDisconnect').disabled = state === 'stopped' || state === 'failed' || state === 'idle';
+  $('#btnConnect').textContent = connected || state === 'reconnecting' ? 'Neu verbinden' : 'Verbinden';
+  let top = 'Nicht verbunden', dot = '';
+  if (state === 'connecting') { setStatus(conn, 'Verbinde ...'); top = 'Verbinde ...'; dot = 'warn'; }
+  if (connected) {
+    setStatus(conn, 'Verbunden.', 'ok'); top = 'Verbunden'; dot = 'ok';
+    $('#connDetails').open = false;
+    clearTimeout(S.statusTimer);
+    // A retained status arrives right after subscribing; nothing at all means the topic base is probably wrong.
+    S.statusTimer = setTimeout(() => { if (!S.status) renderTv(); }, 6000);
+  }
+  if (state === 'reconnecting') {
+    const s = d.delay ? Math.max(1, Math.round(d.delay / 1000)) : 0;
+    setStatus(conn, s ? `Verbindung unterbrochen. Neuer Versuch in ${s} Sekunden ...` : 'Verbinde erneut ...', 'warn');
+    top = 'Verbindung unterbrochen'; dot = 'warn';
+  }
+  if (state === 'stopped') setStatus(conn, 'Getrennt.');
+  if (state === 'failed') {
+    dot = 'err'; top = 'Fehler';
+    $('#connDetails').open = true;
+    let msg = 'Die Verbindung hat nicht geklappt.';
+    if (d.reason === 'url') msg = 'Die Server-Adresse ist ungültig. Beispiel: wss://name.emqxsl.com:8084/mqtt';
+    else if (d.reason === 'refused') msg = REFUSED[d.code] || msg;
+    else if (d.reason === 'unreachable') msg = 'Der Server ist nicht erreichbar. Bitte Adresse, Port (im Browser meist 8084 oder 8884) und /mqtt am Ende prüfen, und ob das Gerät Internet hat.';
+    else if (d.reason === 'handshake') msg = 'Der Server hat nicht geantwortet. Ist es wirklich ein MQTT-Server? Bitte Adresse und Port prüfen.';
+    setStatus(conn, msg, 'err');
+  }
+  renderBoxes();
+  $('#topText').textContent = top;
+  $('#topDot').className = 'dot ' + dot;
+  if (!connected) clearTimeout(S.statusTimer);
+  renderTv();
+  updateSendability();
+  linkSync();
+  updateSyncUi();
+}
+
+function resetTv() {
+  S.status = S.tv = S.telemetry = S.config = S.liveStreamError = null;
+  S.channels = [];
+}
+
+let autoPickTimer = 0;
+function autoPick() {
+  if (S.base) { return; }
+  const bases = [...found.keys()];
+  const base = bases.find(b => b === S.preferred) || bases.find(b => found.get(b) === 'online') || bases[0];
+  if (!base) { return; }
+  $('#boxSelect').value = base;
+  pickBox();
+}
+function noteBox(m) {
+  const base = m.topic.slice(0, -'/status'.length);
+  if (!base || !m.payload.length) { found.delete(base); renderBoxes(); return; }
+  const data = tryJson(Mqtt.text(m.payload));
+  found.set(base, isObj(data) && data.state === 'online' ? 'online' : 'offline');
+  renderBoxes();
+  // Plug and play: with no TV chosen yet, the first one found (an online one if there is any) is taken.
+  if (!S.base && !$('#cBase').value.trim()) {
+    clearTimeout(autoPickTimer);
+    autoPickTimer = setTimeout(autoPick, 800);
+  }
+}
+function onMessage(m) {
+  if (m.topic.endsWith('/status') && !m.topic.startsWith('$')) noteBox(m);
+  if (!m.topic.startsWith(S.base + '/')) return;
+  const sub = m.topic.slice(S.base.length + 1);
+  const text = Mqtt.text(m.payload);
+  const data = text.trim() ? tryJson(text) : null;
+  switch (sub) {
+  case 'status': S.status = isObj(data) ? data : null; renderTv(); updateSendability(); linkSync(); break;
+  case 'state':
+    S.tv = isObj(data) ? data : null;
+    // A picture again: the last stream error is history.
+    if (S.tv && S.tv.picture === true && S.tv.screen === 'ok') S.liveStreamError = null;
+    renderTv(); renderControls(); break;
+  case 'telemetry': S.telemetry = isObj(data) ? data : null; renderTv(); updateSendability(); break;
+  case 'channels': S.channels = Array.isArray(data) ? data.filter(isObj) : []; renderControls(); break;
+  case 'config': if (isObj(data)) onConfig(data); break;
+  case 'result': onResult(data, text, m.retain); break;
+  case 'errors': onErrorEvent(data, text, m.retain); break;
+  case 'set/schedule': case 'set/config': onSyncCommand(sub, text, m.retain); break;
+  default: break;
+  }
+}
+
+/* ---- TV card ---- */
+const SCREEN_DE = { ok: 'Bild läuft', hdmi: 'HDMI-Eingang', 'no-picture-yet': 'Bild lädt noch',
+  'red-no-picture': 'Kein Bild (roter Bildschirm)', 'yellow-no-internet': 'Kein Internet (gelber Bildschirm)' };
+const ERROR_TYPE_DE = { stream: 'Sender', 'no-picture': 'Kein Bild', 'no-internet': 'Kein Internet', hdmi: 'HDMI',
+  guide: 'Programmführer', command: 'Befehl', speech: 'Sprache', jitsi: 'Videoanruf', crash: 'Absturz' };
+/** An error event's message (English, prefixed with the command) in German where it is known. */
+function eventText(msg) {
+  const s = show(msg, '').replace(/^(set|cmd)\/[\w-]+: /, '').replace(/;\s*$/, '');
+  return Logic.translateAppMessage(s, SETTING_LABELS).replace(/^Der Fernseher meldet: /, '');
+}
+function duration(sec) {
+  if (typeof sec !== 'number' || !Number.isFinite(sec) || sec < 0) return '';
+  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+  if (d) return `${d} Tg. ${h} Std.`;
+  if (h) return `${h} Std. ${m} Min.`;
+  return `${m} Min.`;
+}
+function when(dateLike) {
+  const d = Logic.parseTime(dateLike);
+  return d ? Logic.clockText(d, new Date(), true) : '';
+}
+/** The technical reason for a red or yellow screen, with the raw text to copy for whoever looks after the TV. */
+function streamBlock(sp) {
+  const raw = el('button', { type: 'button', class: 'mono', title: 'Tippen zum Kopieren', 'aria-label': `Technischer Text, tippen zum Kopieren: ${sp.raw}` });
+  raw.textContent = sp.raw;
+  const copied = el('span', { class: 'small ok-text' });
+  raw.addEventListener('click', () => {
+    const done = () => { copied.textContent = ' kopiert'; setTimeout(() => { copied.textContent = ''; }, 2000); };
+    // The clipboard API can be missing or refused; then the text is selected so that it can be copied by hand.
+    const select = () => { const r = document.createRange(); r.selectNodeContents(raw); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(sp.raw).then(done, select);
+    else select();
+  });
+  const where = [sp.channel && `Sender ${sp.channel}`, Logic.shortUrl(sp.url),
+    sp.time && Logic.relativeTime(Date.now() - sp.time.getTime())].filter(Boolean).join(' - ');
+  return el('div', { class: 'stream-error' },
+    el('div', { class: 'stream-head', text: sp.head }),
+    sp.hint ? el('div', { class: 'hint', text: sp.hint }) : null,
+    el('div', {}, raw, copied),
+    where ? el('div', { class: 'hint', text: where }) : null);
+}
+function tvOnline() { return !!S.status && S.status.state === 'online'; }
+function renderTv() {
+  const head = $('#tvHead'), dot = $('#tvDot'), sub = $('#tvSub'), facts = $('#tvFacts');
+  facts.replaceChildren();
+  sub.textContent = '';
+  if (S.conn !== 'connected') {
+    head.textContent = S.conn === 'reconnecting' ? 'Verbindung unterbrochen' : 'Noch nicht verbunden';
+    dot.className = 'dot';
+    return;
+  }
+  const st = S.status;
+  if (!st) {
+    head.textContent = 'Der Fernseher hat sich noch nicht gemeldet';
+    dot.className = 'dot warn';
+    sub.textContent = 'Wenn das so bleibt: Ist der Name des Fernsehers (Themen-Basis) richtig? War der Fernseher schon einmal verbunden?';
+    return;
+  }
+  const online = tvOnline();
+  dot.className = 'dot ' + (online ? 'ok' : 'err');
+  if (online) {
+    head.textContent = 'Eingeschaltet und verbunden';
+    const since = when(st.since), prev = Logic.stopText(st.previous_stop);
+    sub.textContent = [since && `seit ${since}`, prev && `Davor: ${prev}`].filter(Boolean).join(' - ');
+  } else {
+    const info = Logic.offlineInfo(st, S.telemetry, new Date());
+    head.textContent = `Der Fernseher ist ${info.head}`;
+    const reason = info.sub ? info.sub[0].toUpperCase() + info.sub.slice(1) : '';
+    sub.textContent = [reason, 'Änderungen werden übernommen, sobald er wieder online ist.'].filter(Boolean).join('. ');
+  }
+  const add = (k, v) => { if (v) facts.append(el('dt', { text: k }), el('dd', { text: v })); };
+  const tv = S.tv, tel = S.telemetry;
+  if (online && tv) {
+    add('Sender', show(tv.channel, ''));
+    add('Bild', SCREEN_DE[tv.screen] || show(tv.screen, ''));
+    const sp = Logic.streamProblem(tv, tel, S.liveStreamError);
+    // Full width under the picture line: the technical text is long and must stay readable on a phone.
+    if (sp) facts.append(el('dd', { class: 'wide' }, streamBlock(sp)));
+    add('Lautstärke', typeof tv.volume === 'number' ? `${tv.volume} %` : '');
+    const now = [tv.message && 'Nachricht auf dem Bildschirm', tv.speaking && 'spricht gerade'].filter(Boolean).join(', ');
+    add('Gerade', now);
+    add('Videoanruf', tv.call ? `läuft${tv.room ? ` (${tv.room})` : ''}` : 'nein');
+    add('Läuft seit', duration(tv.uptime_s));
+  }
+  if (tel && isObj(tel.last_error)) {
+    const e = tel.last_error;
+    add('Letzter Fehler', [when(e.time), ERROR_TYPE_DE[e.type] || show(e.type, ''), eventText(e.message)].filter(Boolean).join(' - '));
+  }
+}
+
+/* ---- Commands (actions, not configuration) ---- */
+function canSend() { return S.conn === 'connected' && tvOnline(); }
+function offlineText() {
+  if (S.conn !== 'connected') return 'Nicht verbunden. Bitte unten bei "Verbindung" verbinden.';
+  if (!tvOnline()) {
+    const info = S.status ? Logic.offlineInfo(S.status, S.telemetry, new Date()) : { head: 'offline', sub: '' };
+    return `Der Fernseher ist ${info.head}${info.sub ? `, ${info.sub}` : ''}. Das geht wieder, sobald er online ist.`;
+  }
+  return '';
+}
+function updateSendability() {
+  const ok = canSend();
+  const callOk = !(S.status && S.status.jitsi === false);
+  for (const b of document.querySelectorAll('[data-needs-tv]')) b.disabled = !ok || (b.hasAttribute('data-needs-call') && !callOk);
+  for (const h of document.querySelectorAll('.offline-hint')) h.textContent = offlineText();
+  $('#callHint').textContent = callOk ? '' : 'Videoanrufe sind am Fernseher abgeschaltet.';
+}
+/** Waits for the next live answer of the TV to a command on <base>/result; resolves null after the time limit. */
+function waitResult(command, ms = 15000) {
+  return new Promise(resolve => {
+    const w = { command, resolve };
+    w.timer = setTimeout(() => { S.waiters = S.waiters.filter(x => x !== w); resolve(null); }, ms);
+    S.waiters.push(w);
+  });
+}
+async function publish(suffix, payload, label, statusNode) {
+  if (!canSend()) { if (statusNode) setStatus(statusNode, offlineText(), 'err'); return false; }
+  try {
+    await S.client.publish(S.base + '/' + suffix, payload, 1);
+    addLog('info', `${label}: gesendet`);
+    return true;
+  } catch (e) {
+    if (statusNode) setStatus(statusNode, `${label}: Senden hat nicht geklappt (Verbindung unterbrochen). Bitte noch einmal versuchen.`, 'err');
+    return false;
+  }
+}
+/** Sends a command and reports the TV's answer (if it gives one within a few seconds) in statusNode. */
+async function command(suffix, payload, label, statusNode, waitMs = 4000) {
+  const answer = waitResult(suffix, waitMs);
+  setStatus(statusNode, `${label}: wird gesendet ...`);
+  if (!(await publish(suffix, payload, label, statusNode))) return null;
+  // Most commands answer only when they fail, so "sent" is the normal outcome.
+  setStatus(statusNode, `${label}: gesendet.`, 'ok');
+  const r = await answer;
+  if (r && r.ok === false) setStatus(statusNode, `${label}: ${Logic.translateAppMessage(r.message, SETTING_LABELS)}`, 'err');
+  return r;
+}
+
+/* ---- Log ---- */
+const COMMAND_DE = { 'set/schedule': 'Erinnerungen speichern', 'set/config': 'Einstellungen speichern', 'cmd/message': 'Nachricht',
+  'cmd/say': 'Vorlesen', 'cmd/say-stop': 'Sprache stoppen', 'set/channel': 'Sender wechseln', 'set/volume': 'Lautstärke',
+  'cmd/jitsi': 'Videoanruf', 'cmd/reload-playlist': 'Senderliste neu laden', 'cmd/say-prefetch': 'Texte vorbereiten' };
+const OK_DE = { ok: 'erledigt', stopped: 'gestoppt', speaking: 'spricht jetzt', hangup: 'aufgelegt' };
+function addLog(kind, text) {
+  // Control characters from binary payloads would garble the list.
+  S.log.unshift({ time: new Date(), kind, text: text.replace(/[\u0000-\u001f\u007f]+/g, ' ') });
+  S.log.length = Math.min(S.log.length, 50);
+  const list = $('#log');
+  list.replaceChildren(...S.log.map(e => el('li', {},
+    el('time', { text: e.time.toLocaleTimeString('de-DE') }), el('span', { class: e.kind, text: e.text }))));
+  $('#logEmpty').hidden = S.log.length > 0;
+}
+function onResult(data, text, retained) {
+  if (!isObj(data)) { if (text.trim()) addLog('info', `Antwort: ${text.slice(0, 300)}`); return; }
+  const cmd = typeof data.command === 'string' ? data.command : '';
+  const name = COMMAND_DE[cmd] || cmd || 'Antwort';
+  if (!retained) {
+    for (const w of S.waiters.filter(x => x.command === cmd)) { clearTimeout(w.timer); w.resolve(data); }
+    S.waiters = S.waiters.filter(x => x.command !== cmd);
+    if (SYNC_TOPICS[cmd]) S.sync[SYNC_TOPICS[cmd]].fromResult(data.ok !== false, show(data.message, ''));
+  }
+  if ('exit' in data) { addLog(data.exit === 0 ? 'ok' : 'err', `${name}: beendet mit ${show(data.exit)}`); return; }
+  // A success carries technical details (a room address, a count); the family only needs to know that it worked.
+  const msg = data.ok === false ? 'Fehler - ' + Logic.translateAppMessage(data.message, SETTING_LABELS) : OK_DE[data.message] || 'erledigt';
+  addLog(data.ok === false ? 'err' : 'ok', `${retained ? '(älter) ' : ''}${name}: ${msg}`);
+}
+function onErrorEvent(data, text, retained) {
+  if (!isObj(data)) { if (text.trim()) addLog('err', `Fehler: ${text.slice(0, 300)}`); return; }
+  // Older apps put a stream error only here (the later no-picture event replaces last_error in the telemetry).
+  if (data.type === 'stream') { S.liveStreamError = data; renderTv(); }
+  const type = ERROR_TYPE_DE[data.type] || show(data.type, 'Fehler');
+  const parts = [typeof data.channel === 'string' && data.channel && `Sender ${data.channel}`, eventText(data.message)].filter(Boolean);
+  addLog('err', `${retained ? '(älter) ' : ''}${type}: ${parts.join(' - ')}`);
+}
+
+/* ---- Inputs ---- */
+/**
+ * Text and number fields: onInput for every keystroke, onCommit when the field is left or Enter is pressed (the
+ * debounce covers the pause in between).
+ */
+function wire(input, onInput, onCommit) {
+  input.addEventListener('input', onInput);
+  input.addEventListener('change', onCommit);
+  input.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    e.preventDefault();
+    onCommit();
+  });
+}
+function numText(v) { return Number.isFinite(v) ? String(v) : ''; }
+/**
+ * Shows an adopted value. Adoption only happens while nothing is being typed (the sync's typing flag), so a field
+ * that merely has the focus is updated too, keeping the cursor where it was.
+ */
+function showValue(input, value) {
+  if (input.value === value) return;
+  // The value is stored trimmed: a blank typed at the end ("Echo " on the way to "Echo Show") must not be taken away again.
+  if (document.activeElement === input && input.value.trim() === value) return;
+  if (document.activeElement !== input) { input.value = value; return; }
+  let start = null, end = null;
+  try { start = input.selectionStart; end = input.selectionEnd; } catch (e) { /* no cursor on this input type */ }
+  input.value = value;
+  try { if (start !== null) input.setSelectionRange(Math.min(start, value.length), Math.min(end, value.length)); } catch (e) { /* no cursor */ }
+}
+/** Runs fn after the typing pause, or now; one timer per sync channel, so a burst of edits becomes one publish. */
+function defer(kind, fn, immediate) {
+  clearTimeout(S.debounce[kind]);
+  S.debounce[kind] = 0;
+  if (immediate) fn();
+  else S.debounce[kind] = setTimeout(() => { S.debounce[kind] = 0; fn(); }, 700);
+}
+function flush(kind) {
+  if (S.debounce[kind]) defer(kind, kind === 'schedule' ? commitSchedule : commitSettings, true);
+}
+
+/* ---- Presentation controls ("Wie"), shared by reminders and "Nachricht jetzt senden" ---- */
+const defaultHints = new Set();
+/** onChange(immediate): immediate for choices, false while a number is typed; onCommit when a number field is left. */
+function presControls(key, p, onChange, onCommit) {
+  const box = el('div', { class: 'pres' });
+  const seg = el('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Wie' });
+  const screenBox = el('div', { class: 'subgroup' }), speechBox = el('div', { class: 'subgroup' });
+  const sync = () => {
+    screenBox.hidden = p.mode === 'speech';
+    speechBox.hidden = p.mode === 'text';
+    secInput.disabled = p.keyOnly;
+  };
+  const modeRadios = Logic.MODES.map(mode => {
+    const r = el('input', { type: 'radio', name: `mode-${key}`, value: mode, checked: p.mode === mode, 'data-field': `mode-${mode}`,
+      onchange: () => { p.mode = mode; sync(); onChange(true); } });
+    seg.append(el('label', {}, r, el('span', { text: Logic.MODE_LABEL[mode] })));
+    return r;
+  });
+  const number = (field, min, max, label, get, put) => {
+    const i = el('input', { type: 'number', min, max, inputmode: 'numeric', 'aria-label': label, 'data-field': field });
+    i.value = numText(get());
+    wire(i, () => { put(intOrNaN(i)); onChange(false); }, onCommit);
+    return i;
+  };
+  const secInput = number('seconds', 1, 3600, 'Sekunden auf dem Bildschirm', () => p.seconds, v => { p.seconds = v; });
+  const keyRadio = el('input', { type: 'radio', name: `show-${key}`, checked: p.keyOnly, 'data-field': 'keyOnly',
+    onchange: () => { p.keyOnly = true; sync(); onChange(true); } });
+  const secRadio = el('input', { type: 'radio', name: `show-${key}`, checked: !p.keyOnly, 'data-field': 'seconds-radio',
+    onchange: () => { p.keyOnly = false; sync(); onChange(true); secInput.focus(); } });
+  screenBox.append(el('div', { class: 'small', text: 'Bildschirm:' }),
+    el('div', { class: 'opt' }, el('label', { class: 'choice' }, keyRadio, 'bleibt, bis eine Taste gedrückt wird')),
+    el('div', { class: 'opt' }, el('label', { class: 'choice' }, secRadio, 'verschwindet nach'), secInput, el('span', { text: 'Sekunden' })));
+  const rep = number('repeat', 1, 10, 'Wie oft sprechen', () => p.repeat, v => { p.repeat = v; });
+  const pause = number('pause', 0, 60, 'Pause in Sekunden', () => p.pause, v => { p.pause = v; });
+  speechBox.append(el('div', { class: 'small', text: 'Sprache:' }),
+    el('div', { class: 'opt' }, rep, el('span', { text: 'mal sprechen' })),
+    el('div', { class: 'opt' }, pause, el('span', { text: 'Sekunden Pause' })));
+  const hint = el('p', { class: 'hint' });
+  defaultHints.add(hint);
+  box.append(el('fieldset', {}, el('legend', { text: 'Wie?' }), seg, screenBox, speechBox, hint));
+  /** Shows the model's values again after an incoming change, without touching the field being typed in. */
+  box.refresh = () => {
+    for (const r of modeRadios) r.checked = r.value === p.mode;
+    keyRadio.checked = p.keyOnly;
+    secRadio.checked = !p.keyOnly;
+    showValue(secInput, numText(p.seconds));
+    showValue(rep, numText(p.repeat));
+    showValue(pause, numText(p.pause));
+    sync();
+  };
+  sync();
+  updateDefaultHint(hint);
+  return box;
+}
+function updateDefaultHint(h) { h.textContent = `Grundeinstellung des Fernsehers: ${Logic.describePres(defaults())}.`; }
+function updateDefaultHints() {
+  for (const h of defaultHints) { if (h.isConnected) updateDefaultHint(h); else defaultHints.delete(h); }
+}
+
+/* ---- Sync of the configuration (schedule and settings) ---- */
+const SYNC_TOPICS = { 'set/schedule': 'schedule', 'set/config': 'config' };
+function settingsOf(cfg) {
+  const o = {};
+  for (const k of Object.keys(cfg || {})) if (!SETTINGS_HIDDEN.includes(k)) o[k] = cfg[k];
+  return o;
+}
+function makeChannels() {
+  for (const ch of Object.values(S.sync || {})) ch.stopTimer();
+  const clock = { set: (fn, ms) => setTimeout(fn, ms), clear: id => clearTimeout(id) };
+  const sender = suffix => (value, retain) => (S.client
+    ? S.client.publish(`${S.base}/${suffix}`, JSON.stringify(value), 1, retain)
+    : Promise.reject(new Error('not connected')));
+  S.sync = {
+    schedule: new Sync.Channel({ clock, send: sender('set/schedule'), same: (a, b) => Logic.sameSchedule(a, b, defaults()),
+      onAdopt: adoptSchedule, onStatus: updateSyncUi }),
+    config: new Sync.Channel({ clock, send: sender('set/config'), same: Logic.sameSettings,
+      onAdopt: adoptSettings, onStatus: updateSyncUi }),
+  };
+}
+function linkSync() {
+  for (const ch of Object.values(S.sync)) ch.link(S.conn === 'connected', tvOnline());
+}
+/** A command on set/schedule or set/config seen on the broker. */
+function onSyncCommand(sub, text, retained) {
+  // The empty retained message is the TV clearing a command it has run.
+  if (!text.trim()) return;
+  // Retained while the TV is online: it ran that one already (at its connect, or live) and it is stale.
+  if (retained && tvOnline()) return;
+  const v = tryJson(text);
+  if (sub === 'set/schedule' && Array.isArray(v)) S.sync.schedule.fromCommand(v);
+  // A partial set/config (Home Assistant, one key) changes those keys only.
+  if (sub === 'set/config' && isObj(v)) S.sync.config.fromCommand(Object.assign({}, S.sync.config.desired, settingsOf(v)));
+}
+function onConfig(cfg) {
+  const first = !S.config;
+  const speechEngine = c => JSON.stringify([c && c.ivona, c && c.ivona_voices]);
+  const engineChanged = !first && speechEngine(S.config) !== speechEngine(cfg);
+  S.config = cfg;
+  updateDefaultHints();
+  if (first) $('#remEditor').disabled = false;
+  S.sync.schedule.fromTv(Array.isArray(cfg.schedule) ? cfg.schedule : []);
+  S.sync.config.fromTv(settingsOf(cfg));
+  // The voice list depends on the TV's speech engine, which may report its voices a while after the other settings.
+  if (engineChanged) renderSettings();
+  S.reminders.forEach(updateReminderView);
+  updateSyncUi();
+}
+function channelText(ch) {
+  switch (ch.status) {
+  case 'pending': return [ch.message === 'retry' ? 'Keine Antwort vom Fernseher, neuer Versuch ...' : 'Wird übertragen ...', 'warn'];
+  case 'offline-wait': return [ch.message === 'connection' ? 'Wartet auf die Verbindung ...'
+    : 'Wartet auf den Fernseher (offline). Wird übernommen, sobald er wieder da ist.', 'warn'];
+  case 'error': return [ch.message === 'no-answer' ? 'Keine Antwort vom Fernseher. Bitte prüfen, ob er läuft.'
+    : Logic.translateAppMessage(ch.message, SETTING_LABELS), 'err'];
+  default: return ['Wird übertragen ...', 'warn']; // in sync otherwise, so an edit is about to go out
+  }
+}
+function cardStatus(r) {
+  const ch = S.sync.schedule, d = defaults();
+  if (Logic.modelProblems(r).length) {
+    return [S.lastValid.has(r.uid) ? 'Nicht übertragen: bitte korrigieren. Der Fernseher behält die vorige Fassung.'
+      : 'Noch nicht übertragen: bitte vervollständigen.', 'err'];
+  }
+  const tvEntry = r.id && Array.isArray(ch.tv) ? ch.tv.find(e => isObj(e) && e.id === r.id) : null;
+  if (tvEntry && Logic.sameSchedule([Logic.storedFromModel(r, d)], [tvEntry], d)) return ['✓ gespeichert', 'ok'];
+  const m = ch.status === 'error' && /^schedule\[(\d+)\]: (.*)$/.exec(ch.message);
+  if (m) {
+    // The TV counts the entries it was sent, which can differ from the cards (incomplete ones are left out).
+    const e = Array.isArray(ch.desired) ? ch.desired[Number(m[1])] : null;
+    if (!e || e.id !== r.id) return ['Nicht gespeichert (wegen eines Fehlers in einer anderen Erinnerung).', 'err'];
+    return [Logic.translateAppMessage(`schedule[0]: ${m[2]}`).replace(/^Erinnerung 1: /, ''), 'err'];
+  }
+  return channelText(ch);
+}
+function groupStatus(specs) {
+  const ch = S.sync.config, tv = ch.tv || {};
+  if (specs.some(s => s.key in S.settingsDraft)) return ['Nicht übertragen: bitte korrigieren.', 'err'];
+  if (specs.every(s => Logic.sameSettings({ [s.key]: S.settings[s.key] }, tv))) return ['✓ gespeichert', 'ok'];
+  return channelText(ch);
+}
+function updateSyncUi() {
+  for (const r of S.reminders) if (r.view) setStatus(r.view.sync, ...cardStatus(r));
+  for (const g of S.groupViews) if (g.node.isConnected) setStatus(g.node, ...groupStatus(g.specs));
+  const chs = Object.values(S.sync), badge = $('#syncBadge');
+  let text = '', kind = '';
+  if (!S.config) text = '';
+  else if (chs.some(c => c.status === 'error')) [text, kind] = ['Fehler', 'err'];
+  else if (S.debounce.schedule || S.debounce.config || chs.some(c => c.status === 'pending')) [text, kind] = ['Wird übertragen ...', 'warn'];
+  else if (chs.some(c => c.status === 'offline-wait')) {
+    [text, kind] = [chs.some(c => c.message === 'connection') ? 'Wartet auf Verbindung' : 'Wartet auf Fernseher (offline)', 'warn'];
+  } else if (S.reminders.some(r => Logic.modelProblems(r).length) || Object.keys(S.settingsDraft).length) {
+    [text, kind] = ['Bitte korrigieren', 'warn'];
+  } else [text, kind] = ['Synchron', 'ok'];
+  badge.textContent = text;
+  badge.className = 'badge ' + kind;
+  badge.hidden = !text;
+}
+
+/* ---- Reminders ---- */
+function timeInput(field, min, label, onValue, onCommit) {
+  const i = el('input', { type: 'time', step: 60, 'aria-label': label, 'data-field': field });
+  i.value = min >= 0 ? Logic.fmtHM(min) : '';
+  wire(i, () => onValue(Logic.parseHM(i.value)), onCommit);
+  return i;
+}
+function remEdited(r, immediate) {
+  updateReminderView(r);
+  S.sync.schedule.touch();
+  defer('schedule', commitSchedule, immediate);
+  updateSyncUi();
+}
+/** Hands the current list (invalid reminders as their last valid version) to the sync. */
+function commitSchedule() {
+  const res = Logic.scheduleToSend(S.reminders, S.lastValid, defaults());
+  S.lastValid = res.lastValid;
+  S.sync.schedule.edit(res.entries);
+  updateSyncUi();
+}
+function commitNow() { defer('schedule', commitSchedule, true); }
+function reminderCard(r, i, count) {
+  const v = r.view = {};
+  const card = el('article', { class: 'reminder' + (r.enabled ? '' : ' off'), 'data-uid': String(r.uid), 'aria-label': `Erinnerung ${i + 1}` });
+  const now = () => remEdited(r, true), later = () => remEdited(r, false), commit = () => flush('schedule');
+  v.sw = el('input', { type: 'checkbox', class: 'switch', checked: r.enabled, role: 'switch', 'data-field': 'enabled',
+    onchange: () => { r.enabled = v.sw.checked; card.classList.toggle('off', !r.enabled); now(); } });
+  v.swText = el('span', { text: r.enabled ? 'An' : 'Aus' });
+  card.append(el('div', { class: 'rem-head' }, el('h3', { text: `Erinnerung ${i + 1}` }),
+    el('label', { class: 'switch-label' }, v.sw, v.swText)));
+
+  const body = el('div', { class: 'rem-body' });
+  v.text = el('textarea', { rows: 2, maxLength: Logic.LIMITS.text, placeholder: 'Was soll erscheinen und gesagt werden?', 'data-field': 'text' });
+  v.text.value = r.text;
+  wire(v.text, () => { r.text = v.text.value; later(); }, commit);
+  v.count = el('span', { class: 'count' });
+  body.append(el('label', { class: 'field' }, el('span', { class: 'lab' }, 'Text ', v.count), v.text));
+
+  // "Wann": typing into a section selects it, so nobody has to find the radio button first.
+  const w = r.when;
+  const pick = kind => { w.kind = kind; (kind === 'daily' ? v.rDaily : v.rRepeat).checked = true; };
+  v.rDaily = el('input', { type: 'radio', name: `when-${r.uid}`, checked: w.kind === 'daily', 'data-field': 'daily', onchange: () => { w.kind = 'daily'; now(); } });
+  v.rRepeat = el('input', { type: 'radio', name: `when-${r.uid}`, checked: w.kind === 'repeat', 'data-field': 'repeat-kind', onchange: () => { w.kind = 'repeat'; now(); } });
+  v.at = timeInput('at', w.at, 'Uhrzeit', m => { w.at = m; pick('daily'); later(); }, commit);
+  v.n = el('input', { type: 'number', min: 1, max: 1440, inputmode: 'numeric', 'aria-label': 'Abstand', 'data-field': 'n' });
+  v.n.value = numText(w.n);
+  wire(v.n, () => { w.n = intOrNaN(v.n); pick('repeat'); later(); }, commit);
+  v.unit = el('select', { 'aria-label': 'Einheit', 'data-field': 'unit', onchange: () => { w.unit = v.unit.value; pick('repeat'); now(); } },
+    el('option', { value: 'min', text: 'Minuten' }), el('option', { value: 'h', text: 'Stunden' }));
+  v.unit.value = w.unit;
+  v.from = timeInput('from', w.from, 'von', m => { w.from = m; pick('repeat'); later(); }, commit);
+  v.until = timeInput('until', w.until, 'bis', m => { w.until = m; pick('repeat'); later(); }, commit);
+  v.until.disabled = w.allDay;
+  v.allDay = el('input', { type: 'checkbox', checked: w.allDay, 'data-field': 'allDay',
+    onchange: () => { w.allDay = v.allDay.checked; v.until.disabled = w.allDay; pick('repeat'); now(); } });
+  v.midnight = el('p', { class: 'hint', text: 'Geht über Mitternacht (abends bis morgens).' });
+  v.optDaily = el('div', { class: 'opt' }, el('label', { class: 'choice' }, v.rDaily, 'Einmal täglich um'), v.at);
+  v.optRepeat = el('div', {},
+    el('div', { class: 'opt' }, el('label', { class: 'choice' }, v.rRepeat, 'Mehrmals: alle'), v.n, v.unit),
+    el('div', { class: 'opt indent' }, el('label', { class: 'choice' }, 'von', v.from),
+      el('label', { class: 'choice' }, 'bis', v.until), el('label', { class: 'choice' }, v.allDay, 'den ganzen Tag')));
+  body.append(el('fieldset', {}, el('legend', { text: 'Wann?' }), v.optDaily, v.optRepeat, v.midnight));
+  v.summary = el('p', { class: 'summary' });
+  v.preview = el('p', { class: 'preview' });
+  body.append(v.summary, v.preview);
+  v.pres = presControls(`r${r.uid}`, r.pres, imm => remEdited(r, imm), commit);
+  body.append(v.pres);
+  v.errors = el('ul', { class: 'errors', 'aria-live': 'polite' });
+  body.append(v.errors);
+  card.append(body);
+
+  v.sync = el('div', { class: 'small syncline', role: 'status', 'aria-live': 'polite' });
+  v.testStatus = el('div', { class: 'small', role: 'status', 'aria-live': 'polite' });
+  const move = d => {
+    const j = i + d;
+    [S.reminders[i], S.reminders[j]] = [S.reminders[j], S.reminders[i]];
+    renderReminders(S.reminders[j].uid, d < 0 ? 'up' : 'down');
+    commitNow();
+  };
+  card.append(v.sync, el('div', { class: 'buttons' },
+    el('button', { type: 'button', class: 'small', text: 'Jetzt testen', 'data-needs-tv': true, onclick: () => testReminder(r) }),
+    el('button', { type: 'button', class: 'small', text: 'Kopieren', 'data-add': true,
+      onclick: () => { addReminders([Logic.copyModel(r)], i + 1); } }),
+    el('button', { type: 'button', class: 'small danger', text: 'Löschen', onclick: () => deleteReminder(i) }),
+    el('button', { type: 'button', class: 'small', text: 'Nach oben', disabled: i === 0, 'data-dir': 'up', onclick: () => move(-1) }),
+    el('button', { type: 'button', class: 'small', text: 'Nach unten', disabled: i === count - 1, 'data-dir': 'down', onclick: () => move(1) })),
+  v.testStatus);
+  v.card = card;
+  updateReminderView(r);
+  return card;
+}
+function updateReminderView(r) {
+  const v = r.view;
+  if (!v) return;
+  const stored = Logic.whenToStored(r.when);
+  v.swText.textContent = r.enabled ? 'An' : 'Aus';
+  v.count.textContent = `(${r.text.length} von ${Logic.LIMITS.text} Zeichen)`;
+  v.midnight.hidden = !Logic.crossesMidnight(r.when);
+  v.optDaily.classList.toggle('inactive', r.when.kind !== 'daily');
+  v.optRepeat.classList.toggle('inactive', r.when.kind !== 'repeat');
+  v.summary.textContent = Logic.summary(stored);
+  v.preview.textContent = r.enabled ? Logic.preview(stored, nowMinutes()) : 'Ausgeschaltet: kommt nicht.';
+  v.errors.replaceChildren(...Logic.modelProblems(r).map(p => el('li', { text: p })));
+  v.text.setAttribute('aria-invalid', String(Logic.textProblems(r.text).length > 0));
+}
+/** Shows a model's values again after an incoming change; the field with the focus keeps what is typed there. */
+function patchCard(r) {
+  const v = r.view, w = r.when;
+  if (!v) return;
+  v.sw.checked = r.enabled;
+  v.card.classList.toggle('off', !r.enabled);
+  showValue(v.text, r.text);
+  showValue(v.at, w.at >= 0 ? Logic.fmtHM(w.at) : '');
+  showValue(v.n, numText(w.n));
+  v.unit.value = w.unit;
+  showValue(v.from, w.from >= 0 ? Logic.fmtHM(w.from) : '');
+  showValue(v.until, w.until >= 0 ? Logic.fmtHM(w.until) : '');
+  v.allDay.checked = w.allDay;
+  v.until.disabled = w.allDay;
+  v.rDaily.checked = w.kind === 'daily';
+  v.rRepeat.checked = w.kind === 'repeat';
+  v.pres.refresh();
+  updateReminderView(r);
+}
+function renderReminders(focusUid, focusDir) {
+  const list = $('#remList');
+  // A rebuild must not take the cursor away from someone who has a field selected.
+  const a = document.activeElement, owner = a && a.closest ? a.closest('article.reminder') : null;
+  let keep = null;
+  if (owner && a.dataset.field) {
+    keep = { uid: owner.dataset.uid, field: a.dataset.field };
+    try { keep.s = a.selectionStart; keep.e = a.selectionEnd; } catch (e) { /* no selection on this input type */ }
+  }
+  list.replaceChildren(...S.reminders.map((r, i) => reminderCard(r, i, S.reminders.length)));
+  $('#remEmpty').hidden = S.reminders.length > 0;
+  updateSendability();
+  updateLimits();
+  updateSyncUi();
+  if (focusUid) {
+    const r = S.reminders.find(x => x.uid === focusUid);
+    if (r && r.view) {
+      r.view.card.scrollIntoView({ block: 'nearest' });
+      // After a move keep the focus on the same button so that it can be pressed again.
+      const target = focusDir && r.view.card.querySelector(`[data-dir="${focusDir}"]:not(:disabled)`);
+      (target || r.view.text).focus({ preventScroll: true });
+    }
+  } else if (keep) {
+    const n = list.querySelector(`article[data-uid="${keep.uid}"] [data-field="${keep.field}"]`);
+    if (n) {
+      n.focus({ preventScroll: true });
+      try { if (keep.s !== null && keep.s !== undefined) n.setSelectionRange(keep.s, keep.e); } catch (e) { /* not a text field */ }
+    }
+  }
+}
+function updateLimits() {
+  const n = S.reminders.length;
+  $('#remCount').textContent = `${n} von ${Logic.LIMITS.entries} Erinnerungen`;
+  $('#btnAddReminder').disabled = n >= Logic.LIMITS.entries;
+  for (const b of document.querySelectorAll('#presets button, [data-add]')) b.disabled = n >= Logic.LIMITS.entries;
+}
+function addReminders(models, at = S.reminders.length) {
+  if (S.reminders.length + models.length > Logic.LIMITS.entries) {
+    setStatus($('#remStatus'), `Höchstens ${Logic.LIMITS.entries} Erinnerungen sind möglich. Bitte zuerst eine löschen.`, 'err');
+    return;
+  }
+  setStatus($('#remStatus'), '');
+  S.reminders.splice(at, 0, ...models);
+  renderReminders(models[0].uid);
+  commitNow();
+}
+/** The TV's (or another editor's) list replaces the page's; cards are kept by id and patched in place. */
+function adoptSchedule(entries) {
+  const d = defaults();
+  const byId = new Map(S.reminders.filter(m => m.id).map(m => [m.id, m]));
+  const next = entries.map(e => {
+    const fresh = Logic.modelFromStored(e, d);
+    const old = fresh.id ? byId.get(fresh.id) : null;
+    if (!old) return fresh;
+    byId.delete(fresh.id);
+    // The card's handlers hold these objects, so they are updated, not replaced.
+    Object.assign(old.when, fresh.when);
+    Object.assign(old.pres, fresh.pres);
+    Object.assign(old, { text: fresh.text, enabled: fresh.enabled, extra: fresh.extra });
+    return old;
+  });
+  const sameCards = next.length === S.reminders.length && next.every((m, i) => m === S.reminders[i]);
+  S.reminders = next;
+  S.lastValid = new Map(next.map((m, i) => [m.uid, entries[i]]));
+  if (sameCards) { next.forEach(patchCard); updateSyncUi(); } else renderReminders();
+}
+let snackTimer = 0;
+function showSnack(text, undo) {
+  const snack = $('#snack');
+  $('#snackText').textContent = text;
+  $('#snackUndo').onclick = () => { snack.hidden = true; clearTimeout(snackTimer); undo(); };
+  snack.hidden = false;
+  clearTimeout(snackTimer);
+  snackTimer = setTimeout(() => { snack.hidden = true; }, 5000);
+}
+function deleteReminder(i) {
+  const r = S.reminders.splice(i, 1)[0], last = S.lastValid.get(r.uid);
+  renderReminders();
+  commitNow();
+  const next = $('#remList').querySelectorAll('article')[Math.min(i, S.reminders.length - 1)];
+  (next ? next.querySelector('textarea') : $('#btnAddReminder')).focus();
+  const name = r.text.trim() ? `"${r.text.trim().slice(0, 40)}"` : 'Erinnerung';
+  showSnack(`${name} gelöscht.`, () => {
+    if (S.reminders.length >= Logic.LIMITS.entries) return;
+    S.reminders.splice(Math.min(i, S.reminders.length), 0, r);
+    if (last) S.lastValid.set(r.uid, last);
+    renderReminders(r.uid);
+    commitNow();
+  });
+}
+function testReminder(r) {
+  // The time does not matter for a test, only what is shown and said.
+  const problems = [...Logic.textProblems(r.text), ...Logic.presProblems(r.pres)];
+  if (problems.length) { setStatus(r.view.testStatus, problems[0], 'err'); return; }
+  command('cmd/message', JSON.stringify(Logic.messageFromPres(r.text, r.pres, defaults())), 'Test', r.view.testStatus);
+}
+
+/* ---- Settings card ---- */
+/*
+ * The voice list: with an Ivona engine on the TV (config.ivona) its voices come first and "ivona" (its German voice)
+ * is the default; the online voices stay available. The TV tells whether it has the engine and which voices.
+ */
+function speechVoiceSpec(s) {
+  const cfg = S.config || {};
+  const ivona = cfg.ivona === true;
+  const own = ivona && Array.isArray(cfg.ivona_voices) ? cfg.ivona_voices.filter(v => Array.isArray(v) && typeof v[0] === 'string') : [];
+  const group = (label, list) => list.map(([v, t]) => [v, `${label}: ${t}`]);
+  return Object.assign({}, s, {
+    help: ivona ? (own.length ? 'Ivona ist auf dem Fernseher vorhanden (Stimmen ohne Internet).' : 'Ivona ist auf dem Fernseher vorhanden, die Stimmen werden noch geladen.')
+      : 'Ivona ist auf dem Fernseher nicht vorhanden: Stimmen aus dem Internet.',
+    def: ivona ? 'ivona' : 'de-DE-KatjaNeural',
+    options: ivona ? [['ivona', 'Ivona: Deutsch (Standard)'], ...group('Ivona', own), ...group('Internet', VOICES)] : VOICES,
+  });
+}
+function settingSpecs() {
+  const known = new Set(SETTINGS.map(s => s.key));
+  const extra = Object.keys(S.settings).filter(k => !known.has(k)).map(k => {
+    const v = S.settings[k];
+    return { group: 'Weitere', key: k, label: k, type: typeof v === 'boolean' ? 'bool' : typeof v === 'number' ? 'number' : 'text', def: undefined };
+  });
+  // Only what this TV reports: an older app without a setting gets no control for it.
+  return [...SETTINGS.filter(s => s.key in S.settings).map(s => (s.key === 'speech_voice' ? speechVoiceSpec(s) : s)), ...extra];
+}
+function settingProblem(s, v) {
+  if (s.type === 'number' && !(Number.isInteger(v) && (s.min === undefined || v >= s.min) && (s.max === undefined || v <= s.max))) {
+    return `${s.label}: bitte eine ganze Zahl${s.min !== undefined ? ` von ${s.min} bis ${s.max}` : ''}.`;
+  }
+  if (s.type === 'text' && s.pattern && !s.pattern.test(v)) return `${s.label}: ${s.patternHint}.`;
+  return '';
+}
+function optionLabel(s, v) {
+  const o = (s.options || []).find(x => x[0] === v);
+  if (o) return o[1];
+  if (s.type === 'bool') return v ? 'Ein' : 'Aus';
+  return show(v, '(leer)');
+}
+function commitSettings() {
+  S.sync.config.edit(Object.assign({}, S.settings));
+  updateSyncUi();
+}
+function settingControl(s) {
+  const cur = () => (s.key in S.settingsDraft ? S.settingsDraft[s.key] : S.settings[s.key]);
+  // A wrong value stays in the field (red) and is not sent; the TV keeps the last valid one.
+  const take = (val, immediate) => {
+    if (settingProblem(s, val)) S.settingsDraft[s.key] = val;
+    else { delete S.settingsDraft[s.key]; S.settings[s.key] = val; }
+    refresh();
+    S.sync.config.touch();
+    defer('config', commitSettings, immediate);
+    updateSyncUi();
+  };
+  const commit = () => flush('config');
+  let ctl;
+  if (s.type === 'bool') {
+    ctl = el('input', { type: 'checkbox', class: 'switch', role: 'switch', 'aria-label': s.label, onchange: () => take(ctl.checked, true) });
+  } else if (s.type === 'select') {
+    ctl = el('select', { 'aria-label': s.label, onchange: () => take(ctl.value, true) });
+  } else if (s.type === 'number') {
+    ctl = el('input', { type: 'number', min: s.min, max: s.max, inputmode: 'numeric', 'aria-label': s.label });
+    wire(ctl, () => take(intOrNaN(ctl), false), commit);
+  } else {
+    ctl = el('input', { type: 'text', 'aria-label': s.label, spellcheck: 'false', autocapitalize: 'off' });
+    wire(ctl, () => take(ctl.value.trim(), false), commit);
+  }
+  const problem = el('div', { class: 'small', style: 'color:var(--err);width:100%' });
+  const defBtn = s.def !== undefined
+    ? el('button', { type: 'button', class: 'small', text: 'Auf Standard', 'aria-label': `${s.label}: auf Standard`,
+      onclick: () => { take(s.def, true); apply(); } })
+    : null;
+  const hint = s.def !== undefined ? el('div', { class: 'hint', text: `Standard: ${optionLabel(s, s.def)}${s.unit && s.type === 'number' ? ' ' + s.unit : ''}` }) : null;
+  function refresh() {
+    const v = cur();
+    problem.textContent = settingProblem(s, v);
+    ctl.setAttribute('aria-invalid', String(!!problem.textContent));
+    if (defBtn) defBtn.disabled = v === s.def;
+  }
+  function apply() {
+    const v = cur();
+    if (s.type === 'bool') ctl.checked = !!v;
+    else if (s.type === 'select') {
+      const opts = s.options.slice();
+      // A value set elsewhere (Home Assistant, an older page) stays selectable.
+      if (!opts.some(o => o[0] === v)) opts.push([v, show(v)]);
+      ctl.replaceChildren(...opts.map(o => el('option', { value: o[0], text: o[1] })));
+      ctl.value = v;
+    } else showValue(ctl, s.type === 'number' ? numText(v) : show(v, ''));
+    refresh();
+  }
+  S.settingViews[s.key] = { apply };
+  apply();
+  return el('div', { class: 'setting' },
+    el('div', { class: 'lab' }, el('div', { text: s.label }), s.help ? el('div', { class: 'hint', text: s.help }) : null, hint),
+    el('div', { class: 'ctl' }, ctl, s.unit ? el('span', { class: 'muted', text: s.unit }) : null, defBtn), problem);
+}
+function renderSettings() {
+  const groups = new Map();
+  for (const s of settingSpecs()) {
+    if (!groups.has(s.group)) groups.set(s.group, []);
+    groups.get(s.group).push(s);
+  }
+  S.settingViews = {};
+  S.groupViews = [];
+  $('#setEmpty').hidden = groups.size > 0;
+  $('#setGroups').replaceChildren(...[...groups].map(([g, specs]) => {
+    const node = el('span', { class: 'small syncline', role: 'status', 'aria-live': 'polite' });
+    S.groupViews.push({ node, specs });
+    return el('fieldset', {}, el('legend', { class: 'group-legend' }, el('span', { text: g }), node), specs.map(settingControl));
+  }));
+  updateSyncUi();
+}
+/** The TV's (or another editor's) settings replace the page's; controls are patched, not rebuilt. */
+function adoptSettings(obj) {
+  const keysBefore = Object.keys(S.settings).sort().join();
+  S.settings = Object.assign({}, obj);
+  S.settingsDraft = {};
+  if (Object.keys(S.settings).sort().join() !== keysBefore || !Object.keys(S.settingViews).length) renderSettings();
+  else { for (const k of Object.keys(S.settingViews)) S.settingViews[k].apply(); updateSyncUi(); }
+}
+
+/* ---- Controls card ---- */
+function renderControls() {
+  const sel = $('#ctlChannel');
+  const current = S.tv && typeof S.tv.channel === 'string' ? S.tv.channel : '';
+  // Rebuilding while the list is open would close it under the user's finger.
+  if (document.activeElement !== sel) {
+    const keep = sel.value;
+    sel.replaceChildren(...S.channels.filter(c => typeof c.name === 'string' && c.name).map(c =>
+      el('option', { value: c.name, text: Number.isInteger(c.number) ? `${c.number}  ${c.name}` : c.name })));
+    if (!S.channels.length) sel.append(el('option', { value: '', text: 'Senderliste noch nicht da' }));
+    sel.value = keep && S.channels.some(c => c.name === keep) && keep !== S.lastChannel ? keep : current;
+    S.lastChannel = current;
+  }
+  const vol = $('#ctlVolume');
+  if (S.tv && typeof S.tv.volume === 'number' && document.activeElement !== vol) {
+    vol.value = String(S.tv.volume);
+    $('#ctlVolumeOut').textContent = `${S.tv.volume} %`;
+  }
+  const room = $('#ctlRoom');
+  if (!room.value && S.config && S.config.jitsi_room) room.value = S.config.jitsi_room;
+}
+
+/* ---- Wiring ---- */
+// The last message is remembered (not a secret), so a message that is sent often is ready again next time.
+const msgDraft = Logic.messageDraft(storeGet(MSG_STORE_KEY));
+const msgPres = msgDraft.pres;
+let msgSaveTimer = 0;
+function saveMessageDraft() {
+  clearTimeout(msgSaveTimer);
+  msgSaveTimer = setTimeout(() => storeSet(MSG_STORE_KEY, { text: $('#msgText').value, pres: msgPres }), 500);
+}
+function init() {
+  const st = loadStore();
+  $('#cUrl').value = st.url || '';
+  $('#cUser').value = st.user || '';
+  // The TV chosen last time is taken again when the broker shows it (see autoPick); never one that is not there.
+  S.preferred = st.base || '';
+  try { localStorage.removeItem(BOXES_KEY); } catch (e) { /* storage may be blocked */ }
+  $('#cRemember').checked = !!st.remember;
+  renderBoxes();
+  $('#boxSelect').addEventListener('change', pickBox);
+  // Plug and play: with a remembered login the page connects by itself and finds the TVs.
+  if (st.url && (st.user || st.remember) && (st.remember ? typeof st.password === 'string' : false)) {
+    setTimeout(connect, 0);
+  }
+  if (st.remember && typeof st.password === 'string') $('#cPass').value = st.password;
+  $('#cRemember').addEventListener('change', saveStore);
+  $('#connForm').addEventListener('submit', e => { e.preventDefault(); connect(); });
+  $('#btnDisconnect').addEventListener('click', disconnect);
+
+  $('#presets').replaceChildren(...PRESETS.map(p => el('button', { type: 'button', text: p.title,
+    onclick: () => addReminders(Logic.modelsFromPreset(p, defaults())) })));
+  $('#btnAddReminder').addEventListener('click', () => addReminders([Logic.blankModel(defaults())]));
+
+  $('#msgText').value = msgDraft.text;
+  $('#msgPres').append(presControls('msg', msgPres, saveMessageDraft, saveMessageDraft));
+  $('#msgText').addEventListener('input', saveMessageDraft);
+  $('#btnMsgEmpty').addEventListener('click', () => { $('#msgText').value = ''; saveMessageDraft(); $('#msgText').focus(); });
+  const msgSt = $('#msgStatus');
+  const msgText = () => {
+    const t = $('#msgText').value;
+    if (!t.trim()) { setStatus(msgSt, 'Bitte zuerst einen Text eingeben.', 'err'); $('#msgText').focus(); return null; }
+    const problems = Logic.presProblems(msgPres);
+    if (problems.length) { setStatus(msgSt, problems[0], 'err'); return null; }
+    return t;
+  };
+  $('#btnMsgSend').addEventListener('click', () => {
+    const t = msgText();
+    if (t !== null) command('cmd/message', JSON.stringify(Logic.messageFromPres(t, msgPres, defaults())), 'Nachricht', msgSt);
+  });
+  $('#btnMsgSay').addEventListener('click', () => {
+    const t = msgText();
+    if (t === null) return;
+    const o = { text: t.trim() };
+    if (msgPres.repeat !== defaults().repeat) o.repeat = msgPres.repeat;
+    if (msgPres.pause !== defaults().pause) o.pause = msgPres.pause;
+    command('cmd/say', JSON.stringify(o), 'Vorlesen', msgSt);
+  });
+  $('#btnMsgClear').addEventListener('click', () => command('cmd/message', '', 'Nachricht entfernen', msgSt));
+  $('#btnSayStop').addEventListener('click', () => command('cmd/say-stop', '1', 'Sprache stoppen', msgSt));
+
+  const ctlSt = $('#ctlStatus');
+  $('#btnChannel').addEventListener('click', () => {
+    const name = $('#ctlChannel').value;
+    if (name) command('set/channel', name, `Sender ${name}`, ctlSt);
+  });
+  const vol = $('#ctlVolume');
+  vol.addEventListener('input', () => { $('#ctlVolumeOut').textContent = `${vol.value} %`; });
+  // Sent on release, not on every step of the slider.
+  vol.addEventListener('change', () => command('set/volume', vol.value, `Lautstärke ${vol.value} %`, ctlSt));
+  $('#btnCall').addEventListener('click', () => {
+    const room = $('#ctlRoom').value.trim();
+    if (!room) { setStatus(ctlSt, 'Bitte einen Raum eingeben.', 'err'); $('#ctlRoom').focus(); return; }
+    command('cmd/jitsi', room, 'Anrufen', ctlSt);
+  });
+  $('#btnHangup').addEventListener('click', () => command('cmd/jitsi', 'hangup', 'Auflegen', ctlSt));
+  $('#btnReload').addEventListener('click', () => command('cmd/reload-playlist', '1', 'Senderliste neu laden', ctlSt));
+
+
+  const io = $('#ioStatus');
+  $('#btnExport').addEventListener('click', () => {
+    const problems = Logic.listProblems(S.reminders);
+    if (problems.length) {
+      const p = problems[0];
+      setStatus(io, (p.index >= 0 ? `Erinnerung ${p.index + 1}: ` : '') + p.message, 'err');
+      return;
+    }
+    Logic.ensureIds(S.reminders);
+    const json = Logic.backupJson(S.reminders, defaults());
+    const a = el('a', { href: URL.createObjectURL(new Blob([json], { type: 'application/json' })),
+      download: `minitv-erinnerungen-${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    $('#importText').value = json;
+    setStatus(io, `${S.reminders.length} Erinnerungen als Datei gespeichert (steht auch im Textfeld).`, 'ok');
+  });
+  const importText = text => {
+    const res = Logic.parseBackup(text, defaults());
+    if (res.error) { setStatus(io, res.error, 'err'); return; }
+    if (!S.config) { setStatus(io, 'Bitte zuerst verbinden: die Erinnerungen werden gleich zum Fernseher übertragen.', 'err'); return; }
+    if (!confirm(`Alle ${S.reminders.length} Erinnerungen am Fernseher durch die ${res.models.length} aus der Sicherung ersetzen?`)) return;
+    S.reminders = res.models;
+    renderReminders();
+    commitNow();
+    setStatus(io, `${res.models.length} Erinnerungen geladen und zum Fernseher übertragen.`, 'ok');
+  };
+  $('#importFile').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    if (f.size > 1000000) { setStatus(io, 'Die Datei ist zu groß für eine Sicherung.', 'err'); return; }
+    f.text().then(importText, () => setStatus(io, 'Die Datei konnte nicht gelesen werden.', 'err'));
+  });
+  $('#btnImportText').addEventListener('click', () => importText($('#importText').value));
+
+  // Timers are slowed in the background; on return refresh the previews and reconnect at once.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (S.client) S.client.retryNow();
+    S.reminders.forEach(updateReminderView);
+    renderTv();
+  });
+  window.addEventListener('online', () => S.client && S.client.retryNow());
+  // Previews and "offline seit ... (vor 3 Minuten)" are relative to now.
+  setInterval(() => { S.reminders.forEach(updateReminderView); renderTv(); updateSendability(); }, 30000);
+
+  makeChannels();
+  renderReminders();
+  renderTv();
+  renderControls();
+  updateSendability();
+  if (st.remember && st.password && st.url && st.base) connect();
+}
+init();
+</script>
+</body>
+</html>

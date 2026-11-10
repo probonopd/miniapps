@@ -1,0 +1,6 @@
+# url-base|path (all downloads of the build; sha256 pinned in libs.sha256)
+G|com/android/tools/r8/9.5.28/r8-9.5.28.jar
+M|org/robolectric/android-all/14-robolectric-10818077/android-all-14-robolectric-10818077.jar
+M|com/hivemq/hivemq-mqtt-client-shaded/1.4.1/hivemq-mqtt-client-shaded-1.4.1.jar
+M|io/reactivex/rxjava2/rxjava/2.2.21/rxjava-2.2.21.jar
+M|org/reactivestreams/reactive-streams/1.0.4/reactive-streams-1.0.4.jar

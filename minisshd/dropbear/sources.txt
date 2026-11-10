@@ -1,0 +1,2 @@
+# name|url (downloaded into dl/, extracted and patched into src/; pinned by sources.sha256)
+dropbear|https://matt.ucc.asn.au/dropbear/releases/dropbear-2024.86.tar.bz2
