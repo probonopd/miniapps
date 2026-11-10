@@ -25,8 +25,8 @@ jobs:
       matrix:
         arch: [armv7, arm64, x86_64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Tools
@@ -36,14 +36,14 @@ jobs:
           pip install -q "ziglang==$ZIGLANG" "meson==$MESON"
           echo "ZIG=$(python -c 'import ziglang, os; print(os.path.join(os.path.dirname(ziglang.__file__), "zig"))')" >> "$GITHUB_ENV"
       - name: Cache downloads and build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             minicall/helper/dl
             minicall/helper/out/${{ matrix.arch }}
           key: helper-${{ matrix.arch }}-${{ hashFiles('minicall/helper/**', '!minicall/helper/out/**') }}
       - run: minicall/helper/build.sh ${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: minicall-helper-${{ matrix.arch }}
           path: minicall/helper/out/${{ matrix.arch }}/baresip
@@ -56,7 +56,7 @@ jobs:
       matrix:
         arch: [armv7, arm64, x86_64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Cross compilers
         run: |
           sudo apt-get update -qq
@@ -67,7 +67,7 @@ jobs:
           mkdir -p native/${{ matrix.arch }}
           cp minisshd/dropbear/out/${{ matrix.arch }}/dropbear minisshd/dropbear/out/${{ matrix.arch }}/dropbearkey \
             minisshd/sftp-server/out/${{ matrix.arch }}/sftp-server native/${{ matrix.arch }}/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: minisshd-native-${{ matrix.arch }}
           path: native/${{ matrix.arch }}
@@ -79,12 +79,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Tools
@@ -97,7 +97,7 @@ jobs:
           chmod +x "$HOME/bin/apktool"
           echo "$HOME/bin" >> "$GITHUB_PATH"
       - name: Cache Maven downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             minitv/build/libs
@@ -105,7 +105,7 @@ jobs:
             minisshd/build/libs
             minicaptive/build/libs
           key: libs-${{ hashFiles('*/libs.sha256') }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Native parts into place
@@ -149,7 +149,7 @@ jobs:
           done
           cp minicaptive/minicaptive.apk "dist/minicaptive-$VERSION.apk"
           ls -l dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: apks-${{ env.VERSION }}
           path: dist

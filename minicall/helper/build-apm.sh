@@ -15,7 +15,7 @@ cd "$(dirname "$0")"
 HERE=$(pwd)
 
 case "${1:?usage: build-apm.sh host|armv7|arm64}" in
-	host)  TARGET=x86_64-linux-musl; CPU=; CPUFAM=x86_64; CPUNAME=x86_64; NEON=no;;
+	host|x86_64) TARGET=x86_64-linux-musl; CPU=; CPUFAM=x86_64; CPUNAME=x86_64; NEON=no;;
 	armv7) TARGET=arm-linux-musleabihf; CPU=-mcpu=generic+v7a+neon; CPUFAM=arm; CPUNAME=armv7; NEON=yes;;
 	arm64) TARGET=aarch64-linux-musl; CPU=; CPUFAM=aarch64; CPUNAME=aarch64; NEON=auto;;
 	*) echo "unknown target $1" >&2; exit 1;;
