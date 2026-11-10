@@ -50,6 +50,17 @@ minisshd/dropbear/build.sh && sh minisshd/build.sh
 sh minicaptive/build.sh
 ```
 
+## Signing
+
+The releases are signed with one private key that only the maintainer has (in CI it is a GitHub Actions secret).
+It stays private on purpose: Android installs an update only over an app signed with the same key, and minicall
+takes call commands only from apps signed like it (that is how minitv starts calls). A public key would let any
+APK pass as an update and let any app start calls with camera and microphone.
+
+You are welcome to build and sign the apps yourself: `common/apk.sh` creates `keys/signing-key.pem` on the first
+build if there is none. Your builds then do not install over the released apps, nor the other way around;
+uninstall one before installing the other. Keep a copy of your key, or you cannot update your own builds either.
+
 | Folder | |
 |---|---|
 | `common/` | Build steps the apps share: pinned downloads, compiling, packaging and signing |
