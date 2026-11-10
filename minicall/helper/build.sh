@@ -23,6 +23,8 @@ case "${1:?usage: build.sh host|x86_64|armv7|arm64}" in
 	*) echo "unknown target $1" >&2; exit 1;;
 esac
 ARCH=$1
+# Sources (pinned, patched) first: a fresh checkout has none.
+./fetch.sh >/dev/null
 ZIG=${ZIG:-$HOME/opt/zig-venv/lib/python3.13/site-packages/ziglang/zig}
 [ -x "$ZIG" ] || { echo "zig not found at $ZIG" >&2; exit 1; }
 JOBS=$(nproc)
