@@ -126,6 +126,7 @@ jobs:
           mkdir -p keys
           if [ -n "$SIGNING_KEY" ]; then
             printf '%s\n' "$SIGNING_KEY" > keys/signing-key.pem
+            echo "SIGNED=1" >> "$GITHUB_ENV"
           fi
       - name: Build
         env:
@@ -153,7 +154,8 @@ jobs:
           name: apks-${{ env.VERSION }}
           path: dist
       - name: Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # Only with the real key: APKs signed with a throwaway one would not install over the apps people have.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.SIGNED == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
