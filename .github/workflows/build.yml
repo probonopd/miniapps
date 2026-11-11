@@ -215,5 +215,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$VERSION" dist/*.apk --target "$GITHUB_SHA" --title "miniapps $VERSION" --notes \
+          # The tag first, by git, then the release on it: the releases API refused to create the tag itself.
+          git tag "v$VERSION" "$GITHUB_SHA"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" dist/*.apk --verify-tag --title "miniapps $VERSION" --notes \
             "Built from $GITHUB_SHA. One APK per app and processor: armeabi-v7a (32-bit ARM), arm64-v8a (64-bit ARM), x86_64 (Intel); minicaptive runs on all. Obtainium: add https://github.com/$GITHUB_REPOSITORY once per app with \"Filter APKs by regular expression\" set to the app's name, e.g. ^minicall-."
