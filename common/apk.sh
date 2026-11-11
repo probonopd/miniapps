@@ -100,8 +100,13 @@ YML
 	for _d in "$@"; do
 		(cd "$_d" && zip -q -r -D "$_work/unsigned.apk" .)
 	done
-	mkdir -p "$(dirname "$MINIAPPS_KEY")"
-	python3 -I "$MINIAPPS/common/sign.py" "$_work/unsigned.apk" "$_out" "$MINIAPPS_KEY"
+	if [ "${APK_UNSIGNED:-0}" = 1 ]; then
+		# CI: the build never sees the key; a separate job signs (common/sign.py) and publishes.
+		cp "$_work/unsigned.apk" "$_out"
+	else
+		mkdir -p "$(dirname "$MINIAPPS_KEY")"
+		python3 -I "$MINIAPPS/common/sign.py" "$_work/unsigned.apk" "$_out" "$MINIAPPS_KEY"
+	fi
 	rm -rf "$_work"
 	ls -l "$_out"
 }
