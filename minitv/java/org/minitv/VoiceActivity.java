@@ -67,7 +67,21 @@ public class VoiceActivity extends Activity {
 			int channel = ChannelMatcher.match(text, playlist.phrases, playlist.owners);
 			String app = handsFree() ? ChannelMatcher.appFor(text, apps()) : null;
 			int volumeStep = handsFree() ? ChannelMatcher.volumeStep(text) : 0;
-			if (volumeStep != 0) {
+			Boolean screenOff = handsFree() ? ChannelMatcher.screenOff(text) : null;
+			// Any command understood brings the display back: someone wants something from the TV. Misheard
+			// noise (the failure beep below) leaves it off, so a false wake word does not light the room up.
+			boolean quit = handsFree() && ChannelMatcher.isQuit(text);
+			// "Ausschalten" means the whole TV: home screen and the display off with it.
+			boolean switchOff = quit && ChannelMatcher.isSwitchOff(text);
+			if (!Boolean.TRUE.equals(screenOff) && !switchOff
+					&& (screenOff != null || volumeStep != 0 || app != null || channel >= 0 || quit)) {
+				Screen.setOff(false);
+			}
+			if (screenOff != null) {
+				Log.i(TAG, "voice: screen " + (screenOff ? "off" : "on"));
+				Screen.setOff(screenOff);
+				finishCapture();
+			} else if (volumeStep != 0) {
 				AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
 				int max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
 				int volume = ChannelMatcher.nextVolume(audio.getStreamVolume(AudioManager.STREAM_MUSIC), max, volumeStep);
@@ -78,8 +92,9 @@ public class VoiceActivity extends Activity {
 				Log.i(TAG, "voice: open " + app);
 				finishCapture();
 				startActivity(getPackageManager().getLaunchIntentForPackage(app));
-			} else if (handsFree() && ChannelMatcher.isQuit(text)) {
-				Log.i(TAG, "voice: quit");
+			} else if (quit) {
+				Log.i(TAG, "voice: quit" + (switchOff ? ", screen off" : ""));
+				if (switchOff) Screen.setOff(true);
 				// Stopping other apps takes more than this app has, so the wake word service does it on this marker.
 				if (!new File(new File(getIntent().getStringExtra("pcm")).getParent(), "wake.quit").createNewFile()) {
 					Log.w(TAG, "voice: cannot ask to quit the other apps");
@@ -190,6 +205,7 @@ public class VoiceActivity extends Activity {
 		if (handsFree()) {
 			words.addAll(ChannelMatcher.QUIT_WORDS);
 			words.addAll(ChannelMatcher.VOLUME_WORDS);
+			words.addAll(ChannelMatcher.SCREEN_WORDS);
 			words.addAll(apps().keySet());
 		}
 		String grammar = new JSONArray(words).toString();

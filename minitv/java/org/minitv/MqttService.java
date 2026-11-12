@@ -650,6 +650,19 @@ public class MqttService extends Service {
 				if (cfg.url) setPlaylist(payload);
 				else result(command, false, "disabled");
 				break;
+			case "cmd/screen":
+				// "off" powers the display down where a root service does it (Echo Show: echoscreen), "on" back up.
+				if (payload.trim().equals("off") || payload.trim().equals("on")) {
+					try {
+						Screen.setOff(payload.trim().equals("off"));
+						result(command, true, "screen " + payload.trim());
+					} catch (java.io.IOException e) {
+						result(command, false, e.getMessage());
+					}
+				} else {
+					result(command, false, "payload must be off or on");
+				}
+				break;
 			case "cmd/reload-playlist":
 				send(new Intent().putExtra("reload", true));
 				break;

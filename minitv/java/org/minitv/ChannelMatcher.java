@@ -62,11 +62,29 @@ final class ChannelMatcher {
 	/** Words for leaving the TV. Only offered with a wake word: a remote has its own button for this. */
 	static final List<String> QUIT_WORDS = java.util.Arrays.asList("beenden", "ausschalten");
 
+	/** "Ausschalten" (not "beenden"): leaving the TV and switching the display off. */
+	static boolean isSwitchOff(String spoken) {
+		return java.util.Arrays.asList(spoken.toLowerCase(Locale.ROOT).split(" +")).contains("ausschalten");
+	}
+
 	static boolean isQuit(String spoken) {
 		for (String word : spoken.toLowerCase(Locale.ROOT).split(" +")) {
 			if (QUIT_WORDS.contains(word)) return true;
 		}
 		return false;
+	}
+
+	/**
+	 * "Bildschirm aus" as one phrase: short single words ("aus", "an") in the grammar took the place of the
+	 * letters of channel names ("zett de eff") and ZDF was no longer understood. "Bildschirm ausschalten" works
+	 * through the quit word. Switching back on needs no words of its own: any other command does it.
+	 */
+	static final List<String> SCREEN_WORDS = java.util.Arrays.asList("bildschirm aus", "bildschirm");
+
+	/** true: switch the display off; null: the command is not about the display. */
+	static Boolean screenOff(String spoken) {
+		List<String> words = java.util.Arrays.asList(spoken.toLowerCase(Locale.ROOT).split(" +"));
+		return words.contains("bildschirm") && (words.contains("aus") || words.contains("ausschalten")) ? Boolean.TRUE : null;
 	}
 
 	static final List<String> VOLUME_WORDS = java.util.Arrays.asList("lauter", "leiser");
