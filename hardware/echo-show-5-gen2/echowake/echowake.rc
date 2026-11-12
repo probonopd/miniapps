@@ -1,0 +1,10 @@
+# adbd is a permissive SELinux domain on this boot image (see amazonblock.rc). Root records
+# without a package; the firewall keeps all of this offline.
+service echowake /system/bin/sh /system/bin/echowake.sh
+    user root
+    group root audio
+    disabled
+    seclabel u:r:adbd:s0
+
+on property:sys.boot_completed=1
+    start echowake

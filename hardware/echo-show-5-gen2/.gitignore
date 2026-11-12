@@ -1,0 +1,26 @@
+# Backups and device images: 24 GB, and personal to one unit
+backup-*/
+.last-backup
+*.img
+*.bin
+
+# Third-party exploit packages and payloads, from their own sources
+amonet/
+META-INF/
+*.zip
+
+# Runtime logs: contain addresses and device details
+wlan-logs/
+*.log
+
+# Recordings
+*.pcm
+*.raw
+*.wav
+
+# Build results
+tools/echocap
+tools/pryonwake
+tools/micpipe.jar
+*.o
+__pycache__/

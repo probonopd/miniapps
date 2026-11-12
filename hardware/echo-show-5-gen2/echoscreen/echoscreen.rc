@@ -1,0 +1,10 @@
+# Display off/on for minitv (cmd/screen, "Bildschirm aus"). adbd is a permissive SELinux domain
+# on this boot image (see amazonblock.rc), like echowake.
+service echoscreen /system/bin/sh /system/bin/echoscreen.sh
+    user root
+    group root
+    disabled
+    seclabel u:r:adbd:s0
+
+on property:sys.boot_completed=1
+    start echoscreen
