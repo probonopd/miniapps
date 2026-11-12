@@ -63,7 +63,8 @@ public final class CallActivity extends Activity implements CallService.Listener
 		});
 
 		CallService svc = CallService.get();
-		if (svc != null && svc.settings() != null && svc.settings().selfView) addSelfView();
+		// Babyphone: this phone sends no picture, so there is nothing to show of it.
+		if (svc != null && svc.settings() != null && svc.settings().selfView && !svc.babyphone()) addSelfView();
 
 		status = new TextView(this);
 		status.setTextColor(Color.WHITE);

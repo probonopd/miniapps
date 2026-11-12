@@ -84,7 +84,11 @@ public final class MainActivity extends Activity implements CallService.Listener
 		String reach = st.hasAccount() ? (s.registered() ? "reachable as " + st.sipUser + "@" + st.sipDomain
 				: "connecting to " + st.sipDomain) : "reachable in the local network";
 		status.setText(s.error().isEmpty() ? reach : reach + " - " + s.error());
-		if (grid.getChildCount() == st.contacts.size()) return;
+		int devices = 0;
+		for (Settings.Contact c : st.contacts) {
+			if (c.uri.startsWith("mqtt:")) devices++;
+		}
+		if (grid.getChildCount() == st.contacts.size() + devices) return;
 		grid.removeAllViews();
 		int w = (getResources().getDisplayMetrics().widthPixels - dp(48)) / 3 - dp(16);
 		for (Settings.Contact c : st.contacts) {
@@ -101,6 +105,30 @@ public final class MainActivity extends Activity implements CallService.Listener
 			b.setOnClickListener(v -> {
 				CallService svc = CallService.get();
 				if (svc != null) svc.call(c.name);
+			});
+			GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+			lp.width = w;
+			lp.height = dp(140);
+			lp.setMargins(dp(8), dp(8), dp(8), dp(8));
+			grid.addView(b, lp);
+		}
+		// Babyphone: a device's camera and microphone, one way, nothing changes on its screen. The device decides
+		// who may (babyphone= in its minicall.conf).
+		for (Settings.Contact c : st.contacts) {
+			if (!c.uri.startsWith("mqtt:")) continue;
+			Button b = new Button(this);
+			b.setText("Babyphone\n" + c.name);
+			b.setAllCaps(false);
+			b.setTextColor(Color.WHITE);
+			b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+			b.setGravity(Gravity.CENTER);
+			GradientDrawable bg = new GradientDrawable();
+			bg.setCornerRadius(dp(16));
+			bg.setColor(0xff1565c0);
+			b.setBackground(bg);
+			b.setOnClickListener(v -> {
+				CallService svc = CallService.get();
+				if (svc != null) svc.babyphone(c.name);
 			});
 			GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
 			lp.width = w;

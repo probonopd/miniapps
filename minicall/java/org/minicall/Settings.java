@@ -68,11 +68,16 @@ final class Settings {
 	final String mqttTopic;
 	final boolean mqttTls;
 	final String webAnswer;
+	/**
+	 * Device contacts that may watch and listen without a ring and without anything on this screen (babyphone);
+	 * empty: nobody. The device's own choice, since it turns camera and microphone on unnoticed.
+	 */
+	final List<String> babyphoneFrom;
 
 	private Settings(List<String[]> kv, boolean telephony) throws IOException {
 		String user = "", password = "", domain = "", transport = "udp", name = "minicall", answer = "contacts";
 		double gain = Double.NaN, speakerGain = Double.NaN;
-		String audioMode = "auto", self = "auto", processing = "webrtc";
+		String audioMode = "auto", self = "auto", processing = "webrtc", baby = "";
 		int source = -1, width = 0, height = 0, fps = 30, bitrate = 0;
 		String mHost = "", mUser = "", mPassword = "", mTopic = "", web = "contacts";
 		int mPort = 8883;
@@ -94,6 +99,7 @@ final class Settings {
 				case "mic-source": source = Integer.parseInt(v); break;
 				case "audio-mode": audioMode = v; break;
 				case "self-view": self = v; break;
+				case "babyphone": baby = v; break;
 				case "audio-processing": processing = v; break;
 				case "video-size": {
 					if (v.equals("auto")) {
@@ -175,6 +181,11 @@ final class Settings {
 		mqttTopic = mTopic;
 		mqttTls = mTls;
 		webAnswer = web;
+		List<String> babies = new ArrayList<>();
+		for (String n : baby.split(",")) {
+			if (!n.trim().isEmpty()) babies.add(n.trim());
+		}
+		babyphoneFrom = Collections.unmodifiableList(babies);
 	}
 
 	boolean hasMqtt() {

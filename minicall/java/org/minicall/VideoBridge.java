@@ -53,6 +53,8 @@ final class VideoBridge {
 	private volatile int[] targetShape;
 	// The screen's rotation in degrees: the camera picture is turned to match it.
 	private final IntSupplier displayDegrees;
+	/** Babyphone, the watching side: the camera stays closed and nothing is sent. */
+	volatile boolean cameraOff;
 
 	VideoBridge(String prefix, IntSupplier displayDegrees) throws IOException {
 		this.displayDegrees = displayDegrees;
@@ -105,6 +107,14 @@ final class VideoBridge {
 	private void runCamera(LocalSocket s) throws IOException {
 		String[] p = SocketServer.readLine(s.getInputStream()).split(" ");
 		if (p.length != 4) throw new IOException("bad camera header");
+		if (cameraOff) {
+			Log.i(TAG, "camera: off (babyphone)");
+			// Until the helper closes the socket at the end of the call.
+			while (s.getInputStream().read() >= 0) {
+				continue;
+			}
+			return;
+		}
 		int wantW = Integer.parseInt(p[0]), wantH = Integer.parseInt(p[1]);
 		int fps = Math.max(5, Integer.parseInt(p[2])), bitrate = Integer.parseInt(p[3]);
 		int[] shape = targetShape;

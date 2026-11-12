@@ -37,6 +37,9 @@ final class AudioBridge {
 	private final boolean callStream;
 	private final boolean webrtcAudio;
 	private final int stream;
+	/** Babyphone: the watching phone sends silence (no recording at all), the watched device plays nothing. */
+	volatile boolean micSilent;
+	volatile boolean speakerSilent;
 	/** The microphone the user plugged in or paired; null: the device's own (Android's choice). */
 	private volatile android.media.AudioDeviceInfo input;
 	private volatile AudioRecord recording;
@@ -113,6 +116,16 @@ final class AudioBridge {
 		int[] h = readHeader(s.getInputStream());
 		int srate = h[0], ch = h[1], ptime = h[2];
 		int frameBytes = srate * ch * ptime / 1000 * 2;
+		if (micSilent) {
+			// Watching as a babyphone: silence without opening the microphone at all.
+			Log.i(TAG, "mic: silent (babyphone)");
+			byte[] quiet = new byte[frameBytes];
+			OutputStream o = s.getOutputStream();
+			while (true) {
+				o.write(quiet);
+				sleep(ptime);
+			}
+		}
 		int chMask = ch == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO;
 		int bufBytes = Math.max(AudioRecord.getMinBufferSize(srate, chMask, AudioFormat.ENCODING_PCM_16BIT),
 				frameBytes * 4);
@@ -158,6 +171,16 @@ final class AudioBridge {
 		int[] h = readHeader(in);
 		int srate = h[0], ch = h[1], ptime = h[2];
 		int frameBytes = srate * ch * ptime / 1000 * 2;
+		if (speakerSilent) {
+			// Watched as a babyphone: nothing of the far end may be heard here; the frames are still taken.
+			Log.i(TAG, "speaker: silent (babyphone)");
+			byte[] skip = new byte[frameBytes];
+			while (true) {
+				out.write('r');
+				SocketServer.readFully(in, skip, frameBytes);
+				sleep(ptime);
+			}
+		}
 		int chMask = ch == 1 ? AudioFormat.CHANNEL_OUT_MONO : AudioFormat.CHANNEL_OUT_STEREO;
 		int min = AudioTrack.getMinBufferSize(srate, chMask, AudioFormat.ENCODING_PCM_16BIT);
 		@SuppressWarnings("deprecation")

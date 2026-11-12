@@ -32,6 +32,11 @@ display-name=Wohnzimmer
 #web-auto-answer=contacts     # web callers: contacts, all (anyone with the page's broker login) or off
 
 # STUN server for finding the public address (several stun= lines possible; the first one is used).
+# Babyphone: these device contacts may watch and listen without a ring and without anything changing on
+# this screen (comma separated; empty: nobody). Only for a device you look after: camera and microphone go on
+# unnoticed.
+#babyphone=Phone
+
 #stun=stun.l.google.com:19302
 
 # Media, coded by the device's hardware (H.264). 16:9; both sides need sizes divisible by 16.

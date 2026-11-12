@@ -70,6 +70,8 @@ public final class CallService extends Service {
 	private ToneGenerator tones;
 	private Listener listener;
 	private State state = State.IDLE;
+	/** The call in progress is a babyphone (one-way: the watched device's camera and microphone only). */
+	private boolean babyphone;
 	private String peer = "";
 	private String status = "";
 	private boolean registered;
@@ -267,6 +269,10 @@ public final class CallService extends Service {
 		// offer being answered must not be refused as busy.
 		if (id.equals(webId)) return;
 		video.setTargetShape(Signaling.screenOf(offer));
+		if (offer.optBoolean("babyphone")) {
+			babyphoneOffer(id, name, from, offer);
+			return;
+		}
 		Settings.Contact c = from != null ? settings.deviceContact(from) : settings.webContact(name);
 		boolean wanted = from == null && state == State.CALLING && webId == null && c != null && c.name.equals(peer);
 		if (!wanted && (state != State.IDLE || settings.webAnswer.equals("off")
@@ -293,6 +299,29 @@ public final class CallService extends Service {
 			}
 		}, RING_MS);
 		showCallScreen();
+	}
+
+	/**
+	 * Watched as a babyphone: camera and microphone go to a device listed in babyphone=, without a ring, without
+	 * the call screen (what this screen shows stays as it is) and without playing anything of the far end.
+	 */
+	private void babyphoneOffer(String id, String name, String from, JSONObject offer) {
+		Settings.Contact c = from != null ? settings.deviceContact(from) : null;
+		if (state != State.IDLE || c == null || !settings.babyphoneFrom.contains(c.name)) {
+			Log.i(TAG, "babyphone refused for " + name + (state != State.IDLE ? ": busy" : ": not in babyphone="));
+			signaling.refuse(id, state != State.IDLE ? "busy" : "not accepted");
+			return;
+		}
+		webId = id;
+		peer = c.name;
+		babyphone = true;
+		audio.speakerSilent = true;
+		Log.i(TAG, "babyphone: " + peer + " watches and listens");
+		set(State.RINGING, "");
+		// The microphone too: the wake word service lets go of it while the in-call flag is set.
+		setInCall(true);
+		command("webrtc_answer", offer);
+		connecting();
 	}
 
 	@Override
@@ -420,6 +449,31 @@ public final class CallService extends Service {
 		main.postDelayed(endAfterBusy, BUSY_MS);
 	}
 
+	/** The watching side: the device's camera and microphone only, nothing of this phone goes out. */
+	void babyphone(String to) {
+		Settings.Contact c = settings.contactNamed(to);
+		if (c == null || !c.uri.startsWith("mqtt:")) {
+			Log.w(TAG, "babyphone: " + to + " is not a device contact");
+			return;
+		}
+		babyphone = true;
+		audio.micSilent = true;
+		video.cameraOff = true;
+		call(to);
+		if (state == State.IDLE) endBabyphone();
+	}
+
+	boolean babyphone() {
+		return babyphone;
+	}
+
+	private void endBabyphone() {
+		babyphone = false;
+		audio.micSilent = false;
+		audio.speakerSilent = false;
+		video.cameraOff = false;
+	}
+
 	void hangup() {
 		if (webId != null) {
 			command("webrtc_close", null);
@@ -517,7 +571,7 @@ public final class CallService extends Service {
 		if (webId == null) return;
 		switch (type) {
 			case "OFFER":
-				if (webPeerTopic != null) signaling.offerTo(webPeerTopic, webId, e.optString("sdp"));
+				if (webPeerTopic != null) signaling.offerTo(webPeerTopic, webId, e.optString("sdp"), babyphone);
 				break;
 			case "ANSWER":
 				signaling.answer(webId, e.optString("sdp"));
@@ -552,7 +606,9 @@ public final class CallService extends Service {
 		main.removeCallbacks(noConnection);
 		main.removeCallbacks(endAfterBusy);
 		tones.stopTone();
-		if (state != State.IDLE) tones.startTone(ToneGenerator.TONE_PROP_PROMPT, 300);
+		// A watched device makes no sound at the end either.
+		if (state != State.IDLE && !(babyphone && audio.speakerSilent)) tones.startTone(ToneGenerator.TONE_PROP_PROMPT, 300);
+		endBabyphone();
 		setInCall(false);
 		set(State.IDLE, "");
 		restartIfIdle();

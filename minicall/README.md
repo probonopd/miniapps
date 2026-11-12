@@ -127,6 +127,15 @@ minicall.apk (Java)
 | `re-netlink-ifname.patch` (also) | Android 11 and newer deny apps the netlink link list (RTM_GETLINK); the addresses alone are used then. |
 | `abseil-cpp-zig-armv8-crypto.patch` | zig rejects abseil's `-march=armv8-a+crypto`. |
 
+### Babyphone
+
+A phone's start screen has a blue "Babyphone" button for each device contact. It shows that device's camera
+and plays its microphone, one way: the phone opens neither camera nor microphone (it sends silence). The
+watched device answers by itself, without a ring, without the call screen and without playing anything, so
+what its screen shows stays as it is. Only device contacts listed in its `babyphone=` may do this; with the
+setting empty (the default) every babyphone request is refused. While it runs, the Echo's wake word pauses,
+as in any call.
+
 ### When a call does not come about
 
 - **Busy**: a device in a call refuses a second one with "busy"; the caller shows "busy" and plays the busy tone

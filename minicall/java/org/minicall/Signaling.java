@@ -175,12 +175,13 @@ final class Signaling {
 	}
 
 	/** Calls the device at topic: its answer and its hangup come back to the listener under this id. */
-	void offerTo(String topic, String id, String sdp) {
+	void offerTo(String topic, String id, String sdp, boolean babyphone) {
 		client.subscribeWith().topicFilter(topic + "/answer/" + id).qos(MqttQos.AT_LEAST_ONCE).send();
 		client.subscribeWith().topicFilter(topic + "/bye/" + id).qos(MqttQos.AT_LEAST_ONCE).send().thenRun(() -> {
 			try {
 				JSONObject o = new JSONObject().put("id", id).put("name", s.displayName).put("from", s.mqttTopic)
 						.put("type", "offer").put("sdp", sdp).put("screen", screen);
+				if (babyphone) o.put("babyphone", true);
 				client.publishWith().topic(topic + "/offer").payload(o.toString().getBytes(StandardCharsets.UTF_8))
 						.qos(MqttQos.AT_LEAST_ONCE).send();
 			} catch (JSONException e) {
