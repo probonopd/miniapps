@@ -314,7 +314,10 @@ public class MainActivity extends Activity implements Player.Listener, VideoCall
 	}
 
 	private void createPlayer() {
-		DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true);
+		// 3 s per address instead of 8: where IPv6 is advertised but does not get through (seen on the Echo), the
+		// IPv6 address of a stream is tried first and would use up the whole attempt before IPv4 gets its turn.
+		DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+				.setConnectTimeoutMs(3000);
 		// Start playing after 1 s of media instead of 2.5 s; live TV does not need a big buffer, and a short
 		// one makes every channel change faster.
 		player = new ExoPlayer.Builder(this)
@@ -1245,6 +1248,7 @@ public class MainActivity extends Activity implements Player.Listener, VideoCall
 	private final Runnable stallRetry = () -> failed("the stream stalled (buffering for " + STALL_MS / 1000 + " s)", "stall");
 	private final Runnable attemptTimeout = () -> failed("no picture within " + ATTEMPT_MS / 1000 + " s", "no-first-frame");
 	private final Runnable nextAttempt = () -> {
+		if (player == null) return;
 		if (attempts % 2 == 0) recreatePlayer();
 		tune();
 	};
@@ -1255,6 +1259,9 @@ public class MainActivity extends Activity implements Player.Listener, VideoCall
 	 * pending attempt is on handler, which every tune and channel change clears, so an old channel is never tried again.
 	 */
 	private void failed(String message, String code) {
+		// Released in onStop: a late error or stall report (sent home by "Ausschalten" while a stream was
+		// failing) must not schedule an attempt that would run without a player.
+		if (player == null) return;
 		attempts++;
 		streamError = code;
 		MqttService.error("stream", message + ", attempt " + attempts, code, attempts);
@@ -1301,6 +1308,10 @@ public class MainActivity extends Activity implements Player.Listener, VideoCall
 		}
 		Log.i("minitv", "first frame at " + SystemClock.elapsedRealtime() + " ms since boot");
 		handler.removeCallbacks(attemptTimeout);
+		// A late picture (the timeout of this attempt had already struck) must not be torn down by the retry it
+		// scheduled: a slow connection would otherwise never keep its picture.
+		handler.removeCallbacks(nextAttempt);
+		retryPending = false;
 		attempts = 0;
 		shutter.setVisibility(View.GONE);
 		pictureUp = true;
