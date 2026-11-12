@@ -1,0 +1,39 @@
+# systemd unit for MiniHA. Install to /etc/systemd/system/miniha.service.
+[Unit]
+Description=MiniHA home automation hub
+Documentation=https://github.com/probonopd/miniha
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=miniha
+Group=miniha
+ExecStart=/usr/local/bin/miniha -data /var/lib/miniha run
+WorkingDirectory=/var/lib/miniha
+# Ports 1883 and 8123 are unprivileged, so no capability is granted.
+AmbientCapabilities=
+CapabilityBoundingSet=
+# Restart on crashes only; a clean stop (TERM) must stay stopped.
+Restart=on-failure
+RestartSec=5
+# Creates /var/lib/miniha owned by the service user if it is missing.
+StateDirectory=miniha
+StateDirectoryMode=0750
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/miniha
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+# AF_NETLINK is needed by Go net.Interfaces, which discovery uses.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=multi-user.target

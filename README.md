@@ -9,13 +9,21 @@ Android TV boxes and projectors, and ordinary phones.
 | [**minicall**](minicall/) | Video calls between devices, to web browsers and to SIP apps, answered by themselves for known callers |
 | [**minisshd**](minisshd/) | A persistent SSH server for devices that would otherwise need a USB cable for a shell |
 | [**minicaptive**](minicaptive/) | Stays online in hotel and hospital WLANs: passes captive portals (WISPr, forms, JavaScript) by itself |
+| [**miniha**](miniha/) | A Home Assistant compatible hub in one static binary: MQTT discovery, automations, dashboards, HA REST and WebSocket APIs; runs on a Pi Zero 2 or a rooted Echo Show |
+
+## Hardware notes
+
+| Device | What is there |
+|---|---|
+| [**Echo Show 5 (2nd gen, 2021)**](hardware/echo-show-5-gen2/) | Jailbreak, backup, root, setup skip, settings fix, minitv and the Amazon network block, with reusable scripts for other "cronos" units |
 
 ## Download
 
 Every change on `main` is built and published under
 [Releases](https://github.com/probonopd/miniapps/releases): one APK per app and processor, `armeabi-v7a` (32-bit
 ARM, e.g. the Echo Show and most TV boxes), `arm64-v8a` (64-bit ARM, current phones) and `x86_64` (Intel);
-minicaptive has no native code and runs on all.
+minicaptive has no native code and runs on all. miniha is not an APK but a static binary per OS and processor
+(Linux, FreeBSD, OpenBSD; the Linux ones also run on Android from a root shell).
 
 To keep them up to date, use [Obtainium](https://github.com/ImranR98/Obtainium): add
 `https://github.com/probonopd/miniapps` once per app and set "Filter APKs by regular expression" to the app's
@@ -48,6 +56,7 @@ sh minitv/build.sh
 minicall/helper/build.sh armv7 && minicall/helper/build.sh arm64 && sh minicall/build.sh
 minisshd/dropbear/build.sh && sh minisshd/build.sh
 sh minicaptive/build.sh
+cd miniha && make          # Go 1.24; "make all" cross-compiles every target into dist/
 ```
 
 ## Signing

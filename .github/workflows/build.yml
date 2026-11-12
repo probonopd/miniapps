@@ -94,6 +94,27 @@ jobs:
           path: native/${{ matrix.arch }}
           if-no-files-found: error
 
+  # miniha is a Go program, not an APK: one static binary per OS and processor, tested first.
+  miniha:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: miniha
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: miniha/go.mod
+          cache-dependency-path: miniha/go.sum
+      - run: go vet ./... && test -z "$(gofmt -l cmd internal web)"
+      - run: go test ./...
+      - run: make all
+      - uses: actions/upload-artifact@v7
+        with:
+          name: miniha-binaries
+          path: miniha/dist
+          if-no-files-found: error
+
   apks:
     needs: [minicall-helper, minisshd-native]
     runs-on: ubuntu-24.04
@@ -177,7 +198,7 @@ jobs:
   # key, and minicall trusts minitv by it) and publishes. Only here, only from main: the key is a secret of the
   # environment "release", which nothing else may use. This job runs nothing but our sign.py.
   release:
-    needs: apks
+    needs: [apks, miniha]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     environment: release
@@ -197,6 +218,10 @@ jobs:
         with:
           name: unsigned-apks
           path: unsigned
+      - uses: actions/download-artifact@v8
+        with:
+          name: miniha-binaries
+          path: miniha-bin
       - name: Sign
         env:
           SIGNING_KEY: ${{ secrets.MINIAPPS_SIGNING_KEY }}
@@ -218,5 +243,6 @@ jobs:
           # The tag first, by git, then the release on it: the releases API refused to create the tag itself.
           git tag "v$VERSION" "$GITHUB_SHA"
           git push origin "v$VERSION"
-          gh release create "v$VERSION" dist/*.apk --verify-tag --title "miniapps $VERSION" --notes \
-            "Built from $GITHUB_SHA. One APK per app and processor: armeabi-v7a (32-bit ARM), arm64-v8a (64-bit ARM), x86_64 (Intel); minicaptive runs on all. Obtainium: add https://github.com/$GITHUB_REPOSITORY once per app with \"Filter APKs by regular expression\" set to the app's name, e.g. ^minicall-."
+          for f in miniha-bin/miniha-*; do mv "$f" "dist/$(basename "$f" | sed "s/^miniha-/miniha-$VERSION-/")"; done
+          gh release create "v$VERSION" dist/* --verify-tag --title "miniapps $VERSION" --notes \
+            "Built from $GITHUB_SHA. One APK per app and processor: armeabi-v7a (32-bit ARM), arm64-v8a (64-bit ARM), x86_64 (Intel); minicaptive runs on all. miniha comes as a static binary per OS and processor (miniha-$VERSION-<os>-<arch>). Obtainium: add https://github.com/$GITHUB_REPOSITORY once per app with \"Filter APKs by regular expression\" set to the app's name, e.g. ^minicall-."

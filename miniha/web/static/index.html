@@ -1,0 +1,1515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiniHA</title>
+<style>
+:root { color-scheme:light dark; --bg:#f3f4f6; --card:#fff; --fg:#111; --muted:#6b7280; --accent:#2563eb; --on:#f59e0b; --border:#e5e7eb; --danger:#dc2626; --ok:#16a34a; --tw:46px; --th:26px; --ctl:0px; }
+@media (prefers-color-scheme: dark) { :root { --bg:#111827; --card:#1f2937; --fg:#f9fafb; --muted:#9ca3af; --border:#374151; } }
+* { box-sizing:border-box; }
+body { margin:0; font:15px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 16px; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:2; }
+header h1 { font-size:18px; margin:0; }
+header .meta { color:var(--muted); font-size:13px; }
+nav { display:flex; flex-wrap:wrap; gap:4px 14px; }
+nav a { color:var(--muted); text-decoration:none; font-size:14px; }
+nav a.active { color:var(--fg); font-weight:600; }
+.view { padding:16px; display:grid; gap:16px; align-content:start; max-width:1100px; margin:0 auto; }
+.tabs { display:flex; flex-wrap:wrap; }
+.tabs button { background:none; border:0; border-bottom:2px solid transparent; color:var(--muted); padding:6px 10px; cursor:pointer; font:inherit; }
+.tabs button.active { color:var(--fg); border-color:var(--accent); }
+#editor { width:100%; min-height:320px; font:13px/1.4 ui-monospace, monospace; margin-top:8px; background:var(--bg); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:8px; }
+.bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:8px; }
+.bar input[type=text], .bar input[type=search], .bar input:not([type]) { flex:1; min-width:140px; max-width:none; }
+.auto { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:7px 0; border-top:1px solid var(--border); }
+.auto:first-child { border-top:0; }
+.auto .name { flex:1 1 140px; }
+.auto .when { color:var(--muted); font-size:13px; }
+main { padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); align-content:start; }
+main h2.area { grid-column:1/-1; font-size:17px; margin:8px 0 -6px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; min-width:0; }
+.card h2 { font-size:15px; margin:0 0 8px; }
+.card h2 small { color:var(--muted); font-weight:normal; margin-left:6px; }
+.row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 10px; padding:7px 0; border-top:1px solid var(--border); }
+.row:first-of-type { border-top:0; }
+.row .name { flex:1 1 110px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.row .val { color:var(--muted); white-space:nowrap; }
+.val.wrap { white-space:normal; text-align:right; }
+.row.unavailable .name, .row.unavailable .val { opacity:.45; }
+.ctl { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:6px; }
+.spark { display:inline-flex; color:var(--accent); flex:none; }
+.toggle { width:var(--tw); height:var(--th); border-radius:calc(var(--th) / 2); border:0; background:#9ca3af; position:relative; cursor:pointer; flex:none; }
+.toggle::after { content:""; position:absolute; top:3px; left:3px; width:calc(var(--th) - 6px); height:calc(var(--th) - 6px); border-radius:50%; background:#fff; transition:left .15s; }
+.toggle.on { background:var(--on); }
+.toggle.on::after { left:calc(var(--tw) - var(--th) + 3px); }
+input, select, textarea { font:inherit; color:var(--fg); background:var(--card); border:1px solid var(--border); border-radius:6px; padding:4px 6px; }
+input[type=range] { width:110px; padding:0; border:0; background:none; min-height:var(--ctl); }
+input[type=checkbox] { width:18px; height:18px; }
+input[type=number] { width:70px; } input[type=text], input[type=password], input[type=search], input[type=date] { width:140px; } select { max-width:160px; }
+input[type=number], input[type=text], input[type=password], input[type=search], input[type=date], select { min-height:var(--ctl); }
+input.code { width:90px; }
+.press { font:inherit; padding:4px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg); cursor:pointer; min-height:var(--ctl); }
+.press.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.press.danger { color:var(--danger); }
+.tblwrap { overflow-x:auto; }
+.tbl { width:100%; border-collapse:collapse; }
+.tbl th { text-align:left; color:var(--muted); font-weight:normal; font-size:13px; padding:6px 8px; }
+.tbl td { padding:7px 8px; border-top:1px solid var(--border); vertical-align:top; overflow-wrap:anywhere; }
+.tbl tr.click { cursor:pointer; }
+.tbl tr.click:hover td, .tbl tr.open td { background:var(--bg); }
+.tbl tr.panel td { background:var(--bg); padding:12px; }
+.tbl .mono { font:12px ui-monospace, monospace; }
+.tbl .mut { color:var(--muted); }
+.edit { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; align-items:end; margin-bottom:10px; }
+.edit label { display:grid; gap:3px; font-size:13px; color:var(--muted); }
+.edit label.chk { display:flex; align-items:center; gap:8px; }
+.edit input[type=text], .edit select { width:100%; max-width:none; }
+.edit .bar { margin:0; }
+.erow { display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-top:1px solid var(--border); }
+.badge { font-size:12px; padding:1px 7px; border-radius:9px; border:1px solid var(--border); color:var(--muted); margin-left:6px; }
+.badge.ok { color:var(--ok); border-color:var(--ok); }
+.reveal { margin-top:10px; padding:10px; border:1px solid var(--on); border-radius:8px; }
+.reveal input { flex:1; min-width:200px; font:13px ui-monospace, monospace; }
+.log { display:flex; gap:12px; padding:6px 0; border-top:1px solid var(--border); }
+.log time { color:var(--muted); white-space:nowrap; font-size:13px; flex:none; }
+.disc { padding:8px 0; border-top:1px solid var(--border); }
+.disc small { display:block; color:var(--muted); }
+#login { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:var(--bg); z-index:5; }
+#login form { background:var(--card); padding:24px; border-radius:10px; border:1px solid var(--border); width:300px; }
+#login input, #login button { width:100%; padding:10px; margin-top:10px; font-size:15px; }
+#login button { background:var(--accent); color:#fff; border:0; border-radius:6px; }
+.err { color:var(--danger); font-size:13px; min-height:18px; }
+.empty { color:var(--muted); grid-column:1/-1; }
+a { color:var(--accent); }
+#conn { display:none; }
+/* Kiosk: touch screen without chrome, so every target is at least 44 px. */
+body.kiosk { --ctl:44px; --tw:76px; --th:44px; font-size:18px; }
+body.kiosk header { display:none; }
+body.kiosk .row { padding:10px 0; }
+body.kiosk input[type=range] { width:170px; }
+body.kiosk .press { padding:4px 18px; min-width:44px; }
+body.kiosk #conn.lost { display:block; position:fixed; right:12px; bottom:12px; background:var(--danger); color:#fff; padding:6px 12px; border-radius:6px; font-size:14px; }
+@media (max-width: 640px) { .opt { display:none; } main { grid-template-columns:1fr; } }
+input[type=time] { width:110px; min-height:var(--ctl); }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); align-content:start; align-items:start; }
+.vstack { display:grid; gap:16px; align-content:start; min-width:0; }
+.hstack { display:flex; flex-wrap:wrap; gap:16px; }
+.hstack > * { flex:1 1 140px; min-width:0; }
+.glance { display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:10px; text-align:center; }
+.tile .n { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tile .v { font-weight:600; }
+.bigbtn { width:100%; padding:14px 10px; display:grid; gap:2px; text-align:center; }
+.bigbtn small { color:inherit; opacity:.7; }
+.unsup { padding:10px; border:1px dashed var(--border); border-radius:10px; background:var(--bg); color:var(--muted); font-size:13px; }
+.md p, .md ul { margin:0 0 8px; } .md ul { padding-left:20px; } .md h3 { font-size:15px; margin:0 0 6px; } .md code { font:13px ui-monospace, monospace; }
+.pic { display:block; max-width:100%; margin:0 auto; border-radius:6px; }
+.gauge svg { display:block; width:100%; max-width:220px; margin:0 auto; }
+.gauge .n { text-align:center; color:var(--muted); }
+pre.example { overflow:auto; background:var(--bg); border-radius:6px; padding:10px; font:12px/1.4 ui-monospace, monospace; }
+.chart { position:relative; color:var(--muted); font-size:13px; }
+.chart svg { display:block; width:100%; height:auto; touch-action:pan-y; }
+.tip { position:absolute; top:0; display:none; pointer-events:none; z-index:1; background:var(--card); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:2px 6px; font-size:12px; white-space:nowrap; }
+.legend { display:flex; flex-wrap:wrap; gap:2px 12px; margin-top:4px; font-size:12px; color:var(--muted); }
+.sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; }
+.hg + .hg { margin-top:12px; }
+.hg .n { font-size:13px; margin-bottom:2px; }
+.chip { display:inline-flex; align-items:center; gap:4px; margin:4px 6px 0 0; padding:1px 4px 1px 9px; border:1px solid var(--border); border-radius:12px; font-size:13px; }
+.chip button { border:0; background:none; color:var(--muted); cursor:pointer; font:inherit; }
+#bell { position:relative; background:none; border:0; padding:2px 4px; cursor:pointer; color:var(--fg); line-height:0; }
+#bellcount { position:absolute; top:-5px; right:-6px; min-width:16px; height:16px; line-height:16px; padding:0 4px; border-radius:8px; background:var(--danger); color:#fff; font-size:11px; font-weight:600; text-align:center; }
+#notif { position:absolute; top:100%; right:12px; width:min(380px, calc(100vw - 24px)); max-height:70vh; overflow:auto; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:4px 12px 10px; box-shadow:0 6px 24px rgba(0,0,0,.25); }
+.nitem { padding:8px 0; border-top:1px solid var(--border); }
+.nitem:first-child { border-top:0; }
+.nitem time { color:var(--muted); font-size:12px; margin-left:6px; }
+.trace { flex:1 0 100%; font-size:13px; }
+.trace details { border-top:1px solid var(--border); padding:4px 0; }
+.step { padding:2px 0 2px 14px; overflow-wrap:anywhere; }
+.errtxt { color:var(--danger); }
+.rel { margin-bottom:10px; font-size:13px; color:var(--muted); }
+@media (max-width: 640px) { .grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header><h1 id="title">MiniHA</h1><nav><a href="#dashboard" data-view="dashboard">Dashboard</a><a href="#overview" data-view="overview" class="active">Overview</a><a href="#automations" data-view="automations">Automations</a><a href="#devices" data-view="devices">Devices</a><a href="#entities" data-view="entities">Entities</a><a href="#areas" data-view="areas">Areas</a><a href="#history" data-view="history">History</a><a href="#logbook" data-view="logbook">Logbook</a><a href="#settings" data-view="settings">Settings</a></nav><span class="meta" id="meta"></span><button id="bell" title="Notifications" aria-label="Notifications" style="display:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><b id="bellcount" style="display:none"></b></button><div id="notif" style="display:none"></div></header>
+<main id="main"></main>
+<section class="view" id="v-dashboard" style="display:none"></section>
+<section class="view" id="v-history" style="display:none">
+  <div class="card"><h2>History <small id="histmsg"></small></h2>
+    <div class="bar" id="histrange"></div>
+    <div class="bar"><input type="text" id="histadd" list="histents" placeholder="Add an entity (type to search)" autocomplete="off"><datalist id="histents"></datalist><button class="press" id="histaddbtn">Add</button></div>
+    <div id="histchips"></div></div>
+  <div class="vstack" id="histout"></div>
+</section>
+<section class="view" id="v-automations" style="display:none">
+  <div class="card"><h2>Automations</h2><div id="autolist"></div></div>
+  <div class="card"><h2>Files <small>saved files are validated and reloaded at once</small></h2>
+    <div class="tabs"><button data-file="automations.yaml" class="active">automations.yaml</button><button data-file="scripts.yaml">scripts.yaml</button><button data-file="scenes.yaml">scenes.yaml</button><button data-file="ui-lovelace.yaml">ui-lovelace.yaml</button></div>
+    <textarea id="editor" spellcheck="false"></textarea>
+    <div class="bar"><button id="save" class="press">Save</button><span class="err" id="fileerr"></span></div>
+  </div>
+</section>
+<section class="view" id="v-devices" style="display:none">
+  <div class="card"><h2>Devices <small id="devcount"></small></h2><div class="tblwrap"><table class="tbl" id="devtbl"></table></div></div>
+</section>
+<section class="view" id="v-entities" style="display:none">
+  <div class="card"><h2>Entities <small id="entcount"></small></h2>
+    <div class="bar"><input type="search" id="entfilter" placeholder="Filter by id, name, platform, device, area" autocomplete="off"></div>
+    <div class="tblwrap"><table class="tbl" id="enttbl"></table></div></div>
+</section>
+<section class="view" id="v-areas" style="display:none">
+  <div class="card"><h2>Areas</h2><div id="arealist"></div>
+    <div class="bar"><input type="text" id="newarea" placeholder="New area name"><button class="press" id="addarea">Add area</button><span class="err" id="areaerr"></span></div></div>
+</section>
+<section class="view" id="v-logbook" style="display:none">
+  <div class="card"><h2>Logbook <small id="logrange"></small></h2>
+    <div class="bar"><input type="date" id="logday"><button class="press" id="logtoday">Last 24 h</button><span class="err" id="logmsg"></span></div>
+    <div id="loglist"></div></div>
+</section>
+<section class="view" id="v-settings" style="display:none">
+  <div class="card"><h2>Status</h2><div id="statusbox"></div></div>
+  <div class="card"><h2>Access tokens <small>for scripts and integrations, sent as a Bearer header</small></h2><div id="toklist"></div>
+    <div class="bar"><input type="text" id="tokname" placeholder="Token name"><button class="press" id="tokadd">Create token</button><span class="err" id="tokerr"></span></div>
+    <div id="tokreveal"></div></div>
+  <div class="card"><h2>Discovered on the network <small>found via mDNS, some need manual steps</small></h2><div id="disclist"></div></div>
+</section>
+<div id="login"><form id="loginform"><h2>MiniHA</h2><input type="password" id="pw" placeholder="Admin password" autofocus><button>Sign in</button><div class="err" id="loginerr"></div></form></div>
+<div id="conn"></div>
+<script>
+const $ = s => document.querySelector(s);
+const VIEWS = ['dashboard', 'overview', 'automations', 'devices', 'entities', 'areas', 'history', 'logbook', 'settings'];
+let registry = {entities: [], devices: [], areas: []};
+let states = [];
+let byEntity = {}, byDevice = {}, byArea = {}, byState = {};
+let stream = null;
+let pending = null;
+let started = false;
+let view = 'overview';
+let kiosk = false;
+let openDevice = null;
+let openEntity = null;
+// A select or slider keeps focus after a mouse selection; without releasing
+// it the row would never be redrawn with the new state. Keyboard users keep it.
+let usedKeys = false;
+addEventListener('keydown', () => { usedKeys = true; }, true);
+addEventListener('pointerdown', () => { usedKeys = false; }, true);
+
+async function api(method, path, body) {
+  const r = await fetch(path, {method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
+  if (r.status === 401) { showLogin(); throw new Error('unauthorized'); }
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { msg = (await r.json()).message || msg; } catch (e) { /* error body is not JSON, keep the status text */ }
+    const err = new Error(msg);
+    err.status = r.status;
+    throw err;
+  }
+  return r.headers.get('content-type')?.includes('json') ? r.json() : r.text();
+}
+
+function showLogin() { if (stream) { stream.close(); stream = null; } started = false; $('#login').style.display = 'flex'; }
+
+$('#loginform').onsubmit = async e => {
+  e.preventDefault();
+  const r = await fetch('/auth/login', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: $('#pw').value})});
+  if (r.ok) { $('#login').style.display = 'none'; $('#pw').value = ''; start(); }
+  else { $('#loginerr').textContent = 'Wrong password'; }
+};
+
+// --- helpers ---
+function domain(id) { return id.split('.')[0]; }
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c])); }
+function h(tag, cls, text) { const e = document.createElement(tag); if (cls) { e.className = cls; } if (text != null) { e.textContent = text; } return e; }
+function btn(label, fn, cls) { const b = h('button', 'press' + (cls ? ' ' + cls : ''), label); b.onclick = fn; return b; }
+function isNum(v) { return v != null && v !== '' && isFinite(+v); }
+function devName(d) { return d.name_by_user || d.name || d.id; }
+function areaName(id) { return id && byArea[id] ? byArea[id].name : ''; }
+function entArea(e) { const d = byDevice[e.device_id]; return e.area_id || (d && d.area_id) || ''; }
+function entLabel(e) { const s = byState[e.entity_id]; return (s && s.attributes && s.attributes.friendly_name) || e.name || e.original_name || e.entity_id; }
+function stateText(e) {
+  if (e.disabled_by) { return 'disabled'; }
+  const s = byState[e.entity_id];
+  return s ? s.state + (s.attributes && s.attributes.unit_of_measurement ? ' ' + s.attributes.unit_of_measurement : '') : '-';
+}
+function areaOptions(sel, none) {
+  return `<option value="">${esc(none)}</option>` + registry.areas.slice().sort((a, b) => a.name.localeCompare(b.name))
+    .map(a => `<option value="${esc(a.area_id)}"${a.area_id === sel ? ' selected' : ''}>${esc(a.name)}</option>`).join('');
+}
+function fmtUptime(s) { const d = Math.floor(s / 86400), hh = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + ' d ' : '') + (d || hh ? hh + ' h ' : '') + m + ' min'; }
+function mib(b) { return (b / 1048576).toFixed(1) + ' MiB'; }
+function kv(o) { return Object.entries(o).map(([k, v]) => k + ': ' + (v && typeof v === 'object' ? JSON.stringify(v) : v)).join(', '); }
+function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : ''; }
+// True while the user is typing or choosing inside a view; its redraw waits.
+function busy(sel) { const a = document.activeElement; return !!(a && a.matches && a.matches('input,select,textarea') && a.closest(sel)); }
+function showErr(e) { if (e.message !== 'unauthorized') { setMeta(e.message); } }
+function setMeta(t, lost) { $('#meta').textContent = t; $('#conn').textContent = lost ? t : ''; $('#conn').classList.toggle('lost', !!lost); }
+
+// --- sparklines (the only cache; refreshed by render, never by a timer) ---
+const sparkCache = new Map();
+const sparkQueue = new Set();
+const sparkBusy = new Set();
+let sparkTimer = null;
+let historyOff = false;
+
+function sparkSvg(pts) {
+  const W = 120, H = 28, t0 = Date.now() - 864e5;
+  let lo = Infinity, hi = -Infinity;
+  for (const p of pts) { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }
+  const xy = pts.map(p => ((Math.max(p[0], t0) - t0) / 864e5 * W).toFixed(1) + ',' + (hi === lo ? H / 2 : H - 2 - (p[1] - lo) / (hi - lo) * (H - 4)).toFixed(1));
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><title>24 h: min ${+lo.toFixed(2)}, max ${+hi.toFixed(2)}</title><polyline fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" points="${xy.join(' ')}"/></svg>`;
+}
+
+function sparkFor(id, slot) {
+  const c = sparkCache.get(id);
+  if (c) { slot.innerHTML = c.pts.length > 1 ? sparkSvg(c.pts) : ''; }
+  if (historyOff || sparkBusy.has(id) || (c && Date.now() - c.t < 60000)) { return; }
+  sparkQueue.add(id);
+  if (!sparkTimer) { sparkTimer = setTimeout(flushSpark, 50); }
+}
+
+// One request for all sensors that became visible in the same render.
+async function flushSpark() {
+  sparkTimer = null;
+  const ids = [...sparkQueue].slice(0, 40);
+  for (const id of ids) { sparkQueue.delete(id); sparkBusy.add(id); }
+  if (sparkQueue.size) { sparkTimer = setTimeout(flushSpark, 50); }
+  const end = new Date(), start = new Date(end - 864e5);
+  const got = new Map();
+  try {
+    const res = await api('GET', `/api/history/period/${start.toISOString()}?filter_entity_id=${ids.join(',')}&end_time=${end.toISOString()}&minimal_response`);
+    for (const list of res) {
+      if (!list.length) { continue; }
+      const pts = list.filter(x => isNum(x.state)).map(x => [Date.parse(x.last_changed), +x.state]).filter(p => isFinite(p[0]));
+      if (pts.length) { pts.push([Date.now(), pts[pts.length - 1][1]]); }
+      got.set(list[0].entity_id, pts);
+    }
+  } catch (e) {
+    // 404 means the recorder is off: stay quiet for the rest of the page life.
+    if (e.status === 404) { historyOff = true; }
+  }
+  for (const id of ids) {
+    sparkCache.set(id, {t: Date.now(), pts: got.get(id) || []});
+    sparkBusy.delete(id);
+    document.querySelectorAll('.spark').forEach(sl => { if (sl.dataset.id === id) { sl.innerHTML = got.get(id) && got.get(id).length > 1 ? sparkSvg(got.get(id)) : ''; } });
+  }
+}
+
+// --- overview ---
+function svc(d, name, s, data) {
+  return api('POST', `/api/services/${d}/${name}`, Object.assign({entity_id: s.entity_id}, data)).then(refresh).catch(showErr);
+}
+function act(label, d, name, s, data, on) { return btn(label, () => svc(d, name, s, data), on ? 'active' : ''); }
+function slider(min, max, step, val, fn) {
+  const r = h('input');
+  r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = val;
+  r.onchange = () => { fn(+r.value); if (!usedKeys) { r.blur(); } };
+  return r;
+}
+function toggle(s, name) {
+  const b = h('button', 'toggle' + (s.state === 'on' ? ' on' : ''));
+  b.title = s.state;
+  b.onclick = () => svc(domain(s.entity_id), name, s);
+  return b;
+}
+function ctl(el) { const c = h('span', 'ctl'); el.appendChild(c); return c; }
+function onOff(el, s) { el.appendChild(toggle(s, s.state === 'on' ? 'turn_off' : 'turn_on')); }
+
+function ctlSwitch(el, s, a) {
+  const d = domain(s.entity_id);
+  if (d === 'light' && a.brightness != null) { el.appendChild(h('span', 'val', Math.round(a.brightness / 2.55) + ' %')); }
+  if (d === 'light' && (a.supported_color_modes || []).some(m => m !== 'onoff')) {
+    el.appendChild(slider(1, 255, 1, a.brightness || 0, v => svc('light', 'turn_on', s, {brightness: v})));
+  }
+  el.appendChild(toggle(s, 'toggle'));
+}
+
+// The helper domains (input_*) behave like their plain counterparts, only the service domain differs.
+const selectCtl = dom => (el, s, a, label) => {
+  if (s.state === 'unknown') { el.appendChild(label); }
+  const sel = h('select');
+  for (const o of a.options || []) { const opt = h('option', '', o); opt.value = o; opt.selected = o === s.state; sel.appendChild(opt); }
+  sel.onchange = () => { svc(dom, 'select_option', s, {option: sel.value}); if (!usedKeys) { sel.blur(); } };
+  el.appendChild(sel);
+};
+const numberCtl = dom => (el, s, a, label) => {
+  el.appendChild(label);
+  if (a.mode === 'slider' && a.min != null && a.max != null) {
+    el.appendChild(slider(a.min, a.max, a.step || 1, isNum(s.state) ? s.state : a.min, v => svc(dom, 'set_value', s, {value: v})));
+    return;
+  }
+  const inp = h('input');
+  inp.type = 'number'; inp.min = a.min; inp.max = a.max; inp.step = a.step; inp.value = s.state === 'unknown' ? '' : s.state;
+  inp.onchange = () => svc(dom, 'set_value', s, {value: +inp.value});
+  el.appendChild(inp);
+};
+const textCtl = dom => (el, s, a, label) => {
+  if (s.state === 'unknown' || a.mode === 'password') { el.appendChild(label); }
+  const inp = h('input');
+  inp.type = a.mode === 'password' ? 'password' : 'text'; inp.maxLength = a.max; inp.value = s.state === 'unknown' ? '' : s.state;
+  inp.placeholder = s.state === 'unknown' ? 'not set' : '';
+  inp.onchange = () => svc(dom, 'set_value', s, {value: inp.value});
+  el.appendChild(inp);
+};
+function fmtDur(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 3600) + ':' + String(Math.floor(sec % 3600 / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0'); }
+
+const CONTROLS = {
+  switch: ctlSwitch,
+  light: ctlSwitch,
+  select: selectCtl('select'),
+  input_select: selectCtl('input_select'),
+  number: numberCtl('number'),
+  input_number: numberCtl('input_number'),
+  text: textCtl('text'),
+  input_text: textCtl('input_text'),
+  input_boolean(el, s) { el.appendChild(toggle(s, 'toggle')); },
+  input_button(el, s) { el.appendChild(act('Press', 'input_button', 'press', s)); },
+  input_datetime(el, s, a) {
+    const st = s.state === 'unknown' ? '' : s.state;
+    const hasD = a.has_date != null ? a.has_date : /^\d{4}-/.test(st);
+    const hasT = a.has_time != null ? a.has_time : /\d:\d\d/.test(st);
+    const parts = st.split(' ');
+    const di = hasD ? h('input') : null, ti = hasT ? h('input') : null;
+    if (di) { di.type = 'date'; di.value = parts[0] || ''; }
+    if (ti) { ti.type = 'time'; ti.value = (hasD ? parts[1] : parts[0]) || ''; }
+    // The service wants every part the entity has, so nothing is sent until all are filled.
+    const send = () => {
+      const data = {};
+      if (di) { if (!di.value) { return; } data.date = di.value; }
+      if (ti) { if (!ti.value) { return; } data.time = ti.value; }
+      svc('input_datetime', 'set_datetime', s, data);
+    };
+    const c = ctl(el);
+    for (const i of [di, ti]) { if (i) { i.onchange = send; c.appendChild(i); } }
+  },
+  counter(el, s, a, label) {
+    el.appendChild(label);
+    ctl(el).append(act('-', 'counter', 'decrement', s), act('+', 'counter', 'increment', s), act('Reset', 'counter', 'reset', s));
+  },
+  timer(el, s, a, label) {
+    // The countdown runs in the browser from finishes_at; the server only sends the state change at the end.
+    if (s.state === 'active' && isFinite(Date.parse(a.finishes_at))) {
+      label.dataset.finish = a.finishes_at;
+      label.textContent = 'active ' + fmtDur((Date.parse(a.finishes_at) - Date.now()) / 1000);
+    } else {
+      const rest = s.state === 'paused' ? a.remaining : a.duration;
+      label.textContent = s.state + (rest ? ' ' + rest : '');
+    }
+    el.appendChild(label);
+    ctl(el).append(act('Start', 'timer', 'start', s), act('Pause', 'timer', 'pause', s), act('Cancel', 'timer', 'cancel', s));
+  },
+  group(el, s, a, label) {
+    const ids = a.entity_id || [];
+    label.textContent = s.state + (ids.length ? ', ' + ids.length + ' members' : '');
+    el.appendChild(label);
+    if (s.state !== 'on' && s.state !== 'off') { return; }
+    const b = h('button', 'toggle' + (s.state === 'on' ? ' on' : ''));
+    b.title = s.state;
+    // Members may be of different domains and there is no generic service, so each domain gets one call.
+    b.onclick = () => {
+      const per = {};
+      for (const id of ids) { (per[domain(id)] = per[domain(id)] || []).push(id); }
+      const name = s.state === 'on' ? 'turn_off' : 'turn_on';
+      Promise.all(Object.entries(per).map(([d, list]) => api('POST', `/api/services/${d}/${name}`, {entity_id: list}))).then(refresh).catch(showErr);
+    };
+    el.appendChild(b);
+  },
+  person(el, s, a, label) {
+    el.appendChild(label);
+    if (isNum(a.latitude) && isNum(a.longitude)) {
+      const l = h('a', '', 'Map');
+      l.href = `https://www.openstreetmap.org/?mlat=${+a.latitude}&mlon=${+a.longitude}&zoom=15`;
+      l.target = '_blank'; l.rel = 'noopener';
+      el.appendChild(l);
+    }
+  },
+  zone(el, s, a, label) {
+    if (isNum(s.state)) { label.textContent = s.state + (s.state === '1' ? ' person' : ' people'); }
+    el.appendChild(label);
+  },
+  sun(el, s, a, label) {
+    const t = v => { const d = v ? new Date(v) : null; return d && isFinite(d) ? d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '-'; };
+    label.textContent = s.state.replace(/_/g, ' ') + (a.elevation != null ? ', ' + a.elevation + '\u00b0' : '') + ', rises ' + t(a.next_rising) + ', sets ' + t(a.next_setting);
+    label.classList.add('wrap');
+    el.appendChild(label);
+  },
+  button(el, s) { el.appendChild(act('Press', 'button', 'press', s)); },
+  scene(el, s) { el.appendChild(act('Activate', 'scene', 'turn_on', s)); },
+  script(el, s, a, label) { el.appendChild(label); el.appendChild(act('Run', 'script', 'turn_on', s)); },
+  cover(el, s, a, label) {
+    const pos = a.current_position;
+    label.textContent = s.state + (pos != null ? ' ' + pos + ' %' : '');
+    el.appendChild(label);
+    const c = ctl(el);
+    c.append(act('Open', 'cover', 'open_cover', s), act('Stop', 'cover', 'stop_cover', s), act('Close', 'cover', 'close_cover', s));
+    if (pos != null) { c.appendChild(slider(0, 100, 1, pos, v => svc('cover', 'set_cover_position', s, {position: v}))); }
+  },
+  lock(el, s, a, label) {
+    el.appendChild(label);
+    const c = ctl(el);
+    c.append(act('Lock', 'lock', 'lock', s, null, s.state === 'locked'), act('Unlock', 'lock', 'unlock', s, null, s.state === 'unlocked'));
+  },
+  climate(el, s, a, label) {
+    const unit = a.temperature_unit || a.unit_of_measurement || '';
+    if (a.current_temperature != null) { label.textContent = a.current_temperature + (unit ? ' ' + unit : ''); el.appendChild(label); }
+    const c = ctl(el);
+    if (a.temperature != null) {
+      let t = +a.temperature;
+      const step = +a.target_temp_step || 0.5;
+      const shown = h('span', '', t + (unit ? ' ' + unit : ''));
+      const nudge = dir => {
+        t = Math.round((t + dir * step) * 100) / 100;
+        if (a.min_temp != null) { t = Math.max(+a.min_temp, t); }
+        if (a.max_temp != null) { t = Math.min(+a.max_temp, t); }
+        shown.textContent = t + (unit ? ' ' + unit : '');
+        svc('climate', 'set_temperature', s, {temperature: t});
+      };
+      c.append(btn('-', () => nudge(-1)), shown, btn('+', () => nudge(1)));
+    }
+    if ((a.hvac_modes || []).length) {
+      const sel = h('select');
+      for (const m of a.hvac_modes) { const opt = h('option', '', m); opt.value = m; opt.selected = m === s.state; sel.appendChild(opt); }
+      sel.onchange = () => { svc('climate', 'set_hvac_mode', s, {hvac_mode: sel.value}); if (!usedKeys) { sel.blur(); } };
+      c.appendChild(sel);
+    } else {
+      el.insertBefore(h('span', 'val', s.state), c);
+    }
+  },
+  fan(el, s, a, label) {
+    label.textContent = s.state + (a.percentage != null && s.state === 'on' ? ' ' + a.percentage + ' %' : '');
+    el.appendChild(label);
+    if ((a.supported_features & 1) && a.percentage != null) { el.appendChild(slider(0, 100, a.percentage_step || 1, a.percentage, v => svc('fan', 'set_percentage', s, {percentage: v}))); }
+    onOff(el, s);
+  },
+  vacuum(el, s, a, label) {
+    el.appendChild(label);
+    ctl(el).append(act('Start', 'vacuum', 'start', s), act('Pause', 'vacuum', 'pause', s), act('Dock', 'vacuum', 'return_to_base', s));
+  },
+  alarm_control_panel(el, s, a, label) {
+    el.appendChild(label);
+    const c = ctl(el);
+    let code = null;
+    if (a.code_format) {
+      code = h('input', 'code');
+      code.type = 'password'; code.placeholder = 'code'; code.autocomplete = 'off';
+      if (a.code_format === 'number') { code.inputMode = 'numeric'; }
+      c.appendChild(code);
+    }
+    const data = () => (code && code.value ? {code: code.value} : null);
+    for (const [label2, name] of [['Arm away', 'alarm_arm_away'], ['Arm home', 'alarm_arm_home'], ['Disarm', 'alarm_disarm']]) {
+      c.appendChild(btn(label2, () => svc('alarm_control_panel', name, s, data())));
+    }
+  },
+  siren(el, s) { onOff(el, s); },
+  valve(el, s, a, label) {
+    el.appendChild(label);
+    ctl(el).append(act('Open', 'valve', 'open_valve', s, null, s.state === 'open'), act('Close', 'valve', 'close_valve', s, null, s.state === 'closed'));
+  },
+  humidifier(el, s, a, label) {
+    label.textContent = s.state + (a.humidity != null ? ' ' + a.humidity + ' %' : '');
+    el.appendChild(label);
+    if (a.humidity != null) { el.appendChild(slider(a.min_humidity ?? 0, a.max_humidity ?? 100, 1, a.humidity, v => svc('humidifier', 'set_humidity', s, {humidity: v}))); }
+    onOff(el, s);
+  },
+  update(el, s, a, label) {
+    label.textContent = a.installed_version != null && a.latest_version != null && s.state === 'on' ? a.installed_version + ' -> ' + a.latest_version : (a.installed_version || s.state);
+    el.appendChild(label);
+    if (s.state === 'on') { el.appendChild(act('Install', 'update', 'install', s)); }
+  },
+  event(el, s, a, label) {
+    const t = Date.parse(s.state);
+    label.textContent = isFinite(t) ? (a.event_type || 'event') + ' ' + new Date(t).toLocaleString() : 'no events yet';
+    el.appendChild(label);
+  },
+};
+
+function row(s, title) {
+  const a = s.attributes || {};
+  const el = h('div', 'row' + (s.state === 'unavailable' ? ' unavailable' : ''));
+  el.dataset.id = s.entity_id;
+  const name = h('span', 'name', title || a.friendly_name || s.entity_id);
+  name.title = s.entity_id;
+  el.appendChild(name);
+  // The current value is always shown as text, also next to editable controls.
+  const label = h('span', 'val', s.state + (a.unit_of_measurement ? ' ' + a.unit_of_measurement : ''));
+  if (domain(s.entity_id) === 'sensor' && isNum(s.state)) {
+    const slot = h('span', 'spark');
+    slot.dataset.id = s.entity_id;
+    el.appendChild(slot);
+    sparkFor(s.entity_id, slot);
+  }
+  const fn = CONTROLS[domain(s.entity_id)];
+  if (fn && s.state !== 'unavailable') { fn(el, s, a, label); } else { el.appendChild(label); }
+  return el;
+}
+
+function renderOverview() {
+  // A row being edited keeps its DOM node, otherwise every event would
+  // rebuild the input under the cursor.
+  const active = document.activeElement;
+  const editRow = active && active.matches && active.matches('input,select,textarea') ? active.closest('.row') : null;
+  const editing = editRow ? editRow.dataset.id : null;
+  const caret = editRow && typeof active.selectionStart === 'number' && /^(text|password)$/.test(active.type) ? [active.selectionStart, active.selectionEnd] : null;
+  const groups = new Map();
+  for (const s of states) {
+    if (domain(s.entity_id) === 'automation') { continue; }
+    const e = byEntity[s.entity_id];
+    if (e && (e.hidden_by || e.disabled_by)) { continue; }
+    const dev = e && byDevice[e.device_id];
+    const areaId = (e && e.area_id) || (dev && dev.area_id) || '';
+    const area = byArea[areaId] ? areaId : '';
+    const key = area + '|' + (dev ? dev.id : '');
+    if (!groups.has(key)) {
+      groups.set(key, {area, name: dev ? devName(dev) : 'Other', model: dev ? [dev.manufacturer, dev.model].filter(Boolean).join(' ') : '', rows: []});
+    }
+    groups.get(key).rows.push(s);
+  }
+  const main = $('#main');
+  main.innerHTML = '';
+  if (!groups.size) { main.innerHTML = '<p class="empty">No entities yet. Devices announcing themselves via MQTT discovery will appear here.</p>'; return; }
+  const byAreaGroups = new Map();
+  for (const g of groups.values()) {
+    if (!byAreaGroups.has(g.area)) { byAreaGroups.set(g.area, []); }
+    byAreaGroups.get(g.area).push(g);
+  }
+  const order = [...byAreaGroups.keys()].sort((x, y) => (x === '' ? 1 : 0) - (y === '' ? 1 : 0) || areaName(x).localeCompare(areaName(y)));
+  const headings = order.length > 1 || order[0] !== '';
+  for (const area of order) {
+    if (headings) { main.appendChild(h('h2', 'area', area ? areaName(area) : 'No area')); }
+    for (const g of byAreaGroups.get(area).sort((x, y) => x.name.localeCompare(y.name))) {
+      const card = h('div', 'card');
+      card.innerHTML = `<h2>${esc(g.name)}<small>${esc(g.model)}</small></h2>`;
+      for (const s of g.rows.sort((x, y) => x.entity_id.localeCompare(y.entity_id))) { card.appendChild(s.entity_id === editing ? editRow : row(s)); }
+      main.appendChild(card);
+    }
+  }
+  // Detaching the row dropped the focus; give it back so typing continues.
+  if (editRow) {
+    active.focus();
+    if (caret) { active.setSelectionRange(caret[0], caret[1]); }
+  }
+}
+
+// --- automations ---
+let currentFile = 'automations.yaml';
+document.querySelectorAll('#v-automations .tabs button').forEach(b => b.onclick = () => openFile(b.dataset.file));
+
+function openFile(name) {
+  currentFile = name;
+  document.querySelectorAll('#v-automations .tabs button').forEach(x => x.classList.toggle('active', x.dataset.file === name));
+  if (location.hash === '#automations') { loadFile(); } else { location.hash = '#automations'; }
+}
+
+async function loadFile() {
+  try { $('#editor').value = await api('GET', '/api/miniha/files/' + currentFile); $('#fileerr').textContent = ''; }
+  catch (e) {
+    // The dashboard file is optional: offer the example as a starting point instead of an error.
+    if (e.status === 404 && currentFile === 'ui-lovelace.yaml') { $('#editor').value = EXAMPLE_DASH; $('#fileerr').textContent = 'new file, saving creates it'; }
+    else { showErr(e); }
+  }
+}
+
+$('#save').onclick = async () => {
+  $('#fileerr').textContent = '';
+  const r = await fetch('/api/miniha/files/' + currentFile, {method: 'PUT', headers: {'Content-Type': 'text/yaml'}, body: $('#editor').value});
+  if (r.ok) { $('#fileerr').textContent = 'saved'; renderAutomations(); if (currentFile === 'ui-lovelace.yaml') { loadDash(); } }
+  else { $('#fileerr').textContent = (await r.json()).message; }
+};
+
+async function renderAutomations() {
+  let list;
+  try { list = await api('GET', '/api/miniha/automations'); } catch (e) { return; }
+  const box = $('#autolist');
+  box.innerHTML = list.length ? '' : '<p class="empty">No automations yet. Add one in automations.yaml below.</p>';
+  for (const a of list) {
+    const r = h('div', 'auto');
+    r.innerHTML = `<span class="name" title="${esc(a.entity_id)}">${esc(a.alias)}</span><span class="when">${a.last_triggered ? 'last ' + new Date(a.last_triggered).toLocaleString() : 'never run'}${a.running ? ' - running' : ''}</span>`;
+    const tog = h('button', 'toggle' + (a.enabled ? ' on' : ''));
+    tog.onclick = () => api('POST', '/api/services/automation/toggle', {entity_id: a.entity_id}).then(renderAutomations).catch(showErr);
+    const tb = btn('Traces', () => {
+      if (openTraces.has(a.entity_id)) { openTraces.delete(a.entity_id); tracePanels.delete(a.entity_id); } else { openTraces.add(a.entity_id); }
+      renderAutomations();
+    }, openTraces.has(a.entity_id) ? 'active' : '');
+    r.append(btn('Run', () => api('POST', '/api/services/automation/trigger', {entity_id: a.entity_id}).then(renderAutomations).catch(showErr)), tb, tog);
+    if (openTraces.has(a.entity_id)) { r.appendChild(tracePanel(a)); }
+    box.appendChild(r);
+  }
+}
+
+// --- automation traces ---
+const openTraces = new Set();
+const tracePanels = new Map();
+function trig(t) { return t && typeof t === 'object' ? t.description || (t.platform || t.trigger || 'trigger') + (t.entity_id ? ' ' + t.entity_id : '') : (t || 'unknown trigger'); }
+function dur(a, b) {
+  const ms = Date.parse(b) - Date.parse(a);
+  return isFinite(ms) ? (ms < 1000 ? ms + ' ms' : (ms / 1000).toFixed(2) + ' s') : '';
+}
+
+// The panel node outlives list redraws, so an open trace is not collapsed by every event.
+function tracePanel(a) {
+  let p = tracePanels.get(a.entity_id);
+  if (!p) { p = h('div', 'trace', 'Loading traces...'); tracePanels.set(a.entity_id, p); loadTraces(p, a); }
+  else if (p.dataset.lt !== (a.last_triggered || '')) { loadTraces(p, a); }
+  return p;
+}
+
+async function loadTraces(p, a) {
+  p.dataset.lt = a.last_triggered || '';
+  let list;
+  try { list = await api('GET', `/api/miniha/automations/${encodeURIComponent(a.entity_id)}/traces`); }
+  catch (e) { p.textContent = e.status === 404 ? 'Traces are not available on this server.' : e.message; return; }
+  if (!list.length) { p.textContent = 'No runs recorded yet.'; return; }
+  p.innerHTML = '';
+  list.forEach((t, i) => {
+    const d = h('details');
+    d.open = i === 0;
+    const res = t.error ? '<span class="errtxt">error</span>' : t.conditions_passed === false ? 'conditions not met' : 'ok';
+    let html = `<summary>${esc(new Date(t.started).toLocaleString())} - ${esc(trig(t.trigger))} - ${res} ${esc(dur(t.started, t.finished))}</summary>`;
+    html += `<div class="step">Conditions: ${t.conditions_passed == null ? 'none' : t.conditions_passed ? 'passed' : 'not met'}</div>`;
+    if (t.error) { html += `<div class="step errtxt">${esc(t.error)}</div>`; }
+    for (const s of t.steps || []) {
+      html += `<div class="step${s.error ? ' errtxt' : ''}"><b>${esc(s.path)}</b> ${esc(s.type)} ${esc(dur(s.started, s.finished))}${s.detail != null && s.detail !== '' ? ' - ' + esc(typeof s.detail === 'object' ? kv(s.detail) : s.detail) : ''}${s.error ? '<br>' + esc(s.error) : ''}</div>`;
+    }
+    d.innerHTML = html;
+    p.appendChild(d);
+  });
+}
+
+// --- devices ---
+function renderDevices(force) {
+  // While a panel is open the table stays put, so typing is never lost.
+  if (!force && (openDevice || busy('#v-devices'))) { return; }
+  const counts = {};
+  for (const e of registry.entities) { counts[e.device_id] = (counts[e.device_id] || 0) + 1; }
+  const list = registry.devices.slice().sort((a, b) => devName(a).localeCompare(devName(b)));
+  $('#devcount').textContent = list.length;
+  let html = '<thead><tr><th>Name</th><th class="opt">Manufacturer / model</th><th class="opt">Version</th><th>Area</th><th>Entities</th><th></th></tr></thead><tbody>';
+  if (!list.length) { html += '<tr><td colspan="6" class="mut">No devices yet.</td></tr>'; }
+  for (const d of list) {
+    const url = safeUrl(d.configuration_url);
+    html += `<tr class="click${d.id === openDevice ? ' open' : ''}" data-id="${esc(d.id)}"><td>${esc(devName(d))}</td><td class="opt">${esc([d.manufacturer, d.model].filter(Boolean).join(' '))}</td><td class="opt">${esc(d.sw_version)}</td><td>${esc(areaName(d.area_id))}</td><td>${counts[d.id] || 0}</td><td>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">Open</a>` : ''}</td></tr>`;
+    if (d.id === openDevice) { html += '<tr class="panel"><td colspan="6"></td></tr>'; }
+  }
+  $('#devtbl').innerHTML = html + '</tbody>';
+  const d = openDevice && byDevice[openDevice];
+  if (d) { devicePanel($('#devtbl tr.panel td'), d); }
+}
+
+function devicePanel(td, d) {
+  const ents = registry.entities.filter(e => e.device_id === d.id).sort((a, b) => a.entity_id.localeCompare(b.entity_id));
+  td.innerHTML = `<div class="edit"><label>Name<input type="text" class="f-name" value="${esc(d.name_by_user)}" placeholder="${esc(d.name)}"></label>
+    <label>Area<select class="f-area">${areaOptions(d.area_id, '(none)')}</select></label>
+    <div class="bar"><button class="press f-save">Save</button><span class="err f-err"></span></div></div>
+    ${ents.map(e => `<div class="erow"><a href="#entities" data-eid="${esc(e.entity_id)}">${esc(entLabel(e))} <small class="mut">${esc(e.entity_id)}</small></a><span class="val">${esc(stateText(e))}</span></div>`).join('') || '<p class="empty">No entities.</p>'}`;
+  td.querySelector('.f-save').onclick = async () => {
+    try {
+      await api('POST', '/api/miniha/devices/' + encodeURIComponent(d.id), {name_by_user: td.querySelector('.f-name').value.trim(), area_id: td.querySelector('.f-area').value});
+      openDevice = null;
+      await refresh();
+    } catch (e) { td.querySelector('.f-err').textContent = e.message; }
+  };
+}
+
+$('#devtbl').onclick = e => {
+  const link = e.target.closest('a[data-eid]');
+  if (link) { e.preventDefault(); editEntity(link.dataset.eid); return; }
+  if (e.target.closest('a') || e.target.closest('tr.panel')) { return; }
+  const tr = e.target.closest('tr.click');
+  if (tr) { openDevice = openDevice === tr.dataset.id ? null : tr.dataset.id; renderDevices(true); }
+};
+
+// --- entities ---
+function editEntity(id) {
+  openEntity = id;
+  $('#entfilter').value = id;
+  if (location.hash === '#entities') { renderEntities(true); } else { location.hash = '#entities'; }
+}
+
+function renderEntities(force) {
+  if (!force && (openEntity || busy('#enttbl'))) { return; }
+  const terms = $('#entfilter').value.toLowerCase().split(/\s+/).filter(Boolean);
+  const rows = [];
+  for (const e of registry.entities) {
+    const dev = byDevice[e.device_id];
+    const cells = {id: e.entity_id, name: entLabel(e), platform: e.platform, dev: dev ? devName(dev) : '', area: areaName(entArea(e)), state: stateText(e)};
+    const hay = Object.values(cells).join(' ').toLowerCase();
+    if (terms.every(t => hay.includes(t))) { rows.push([e, cells]); }
+  }
+  rows.sort((a, b) => a[0].entity_id.localeCompare(b[0].entity_id));
+  $('#entcount').textContent = rows.length + ' of ' + registry.entities.length;
+  const cap = 300;
+  let html = '<thead><tr><th>Entity ID</th><th>Name</th><th class="opt">Platform</th><th class="opt">Device</th><th class="opt">Area</th><th>State</th></tr></thead><tbody>';
+  if (!rows.length) { html += '<tr><td colspan="6" class="mut">No matching entities.</td></tr>'; }
+  for (const [e, c] of rows.slice(0, cap)) {
+    html += `<tr class="click${e.entity_id === openEntity ? ' open' : ''}" data-id="${esc(e.entity_id)}"><td class="mono">${esc(c.id)}</td><td>${esc(c.name)}</td><td class="opt">${esc(c.platform)}</td><td class="opt">${esc(c.dev)}</td><td class="opt">${esc(c.area)}</td><td>${esc(c.state)}</td></tr>`;
+    if (e.entity_id === openEntity) { html += '<tr class="panel"><td colspan="6"></td></tr>'; }
+  }
+  if (rows.length > cap) { html += `<tr><td colspan="6" class="mut">Showing ${cap}, narrow the filter to see more.</td></tr>`; }
+  $('#enttbl').innerHTML = html + '</tbody>';
+  const e = openEntity && byEntity[openEntity];
+  const td = $('#enttbl tr.panel td');
+  if (e && td) { entityPanel(td, e); }
+}
+
+function entityPanel(td, e) {
+  const dev = byDevice[e.device_id];
+  td.innerHTML = `<div class="rel">Related: device ${dev ? `<a href="#devices" class="f-dev">${esc(devName(dev))}</a>` : 'none'}, area ${esc(areaName(entArea(e)) || 'none')} - <a href="#history" class="f-hist">Show history</a></div>
+    <div class="edit"><label>Name<input type="text" class="f-name" value="${esc(e.name)}" placeholder="${esc(e.original_name)}"></label>
+    <label>Icon<input type="text" class="f-icon" value="${esc(e.icon)}" placeholder="mdi:lightbulb"></label>
+    <label>Area<select class="f-area">${areaOptions(e.area_id, '(device area)')}</select></label>
+    <label>Entity ID<input type="text" class="f-id" value="${esc(e.entity_id)}"></label>
+    <label class="chk"><input type="checkbox" class="f-en"${e.disabled_by ? '' : ' checked'}>Enabled</label>
+    <div class="bar"><button class="press f-save">Save</button><button class="press f-cancel">Cancel</button><span class="err f-err"></span></div></div>`;
+  const q = sel => td.querySelector(sel);
+  q('.f-cancel').onclick = () => { openEntity = null; renderEntities(true); };
+  q('.f-hist').onclick = ev => { ev.preventDefault(); showHistoryFor(e.entity_id); };
+  if (dev) { q('.f-dev').onclick = () => { openDevice = dev.id; }; }
+  q('.f-save').onclick = async () => {
+    const body = {name: q('.f-name').value.trim(), icon: q('.f-icon').value.trim(), area_id: q('.f-area').value};
+    const nid = q('.f-id').value.trim();
+    if (nid && nid !== e.entity_id) { body.new_entity_id = nid; }
+    // Leave disabled_by alone unless the box changed: it may be set by the integration.
+    if (q('.f-en').checked !== !e.disabled_by) { body.disabled_by = q('.f-en').checked ? '' : 'user'; }
+    try {
+      await api('POST', '/api/miniha/entities/' + encodeURIComponent(e.entity_id), body);
+      openEntity = null;
+      await refresh();
+    } catch (err) { q('.f-err').textContent = err.message; }
+  };
+}
+
+$('#enttbl').onclick = e => {
+  if (e.target.closest('tr.panel')) { return; }
+  const tr = e.target.closest('tr.click');
+  if (tr) { openEntity = openEntity === tr.dataset.id ? null : tr.dataset.id; renderEntities(true); }
+};
+$('#entfilter').oninput = () => renderEntities(true);
+
+// --- areas ---
+function renderAreas(force) {
+  if (!force && busy('#v-areas')) { return; }
+  const box = $('#arealist');
+  box.innerHTML = registry.areas.length ? '' : '<p class="empty">No areas yet. Create one below, then assign devices and entities to it.</p>';
+  for (const a of registry.areas.slice().sort((x, y) => x.name.localeCompare(y.name))) {
+    const nd = registry.devices.filter(d => d.area_id === a.area_id).length;
+    const ne = registry.entities.filter(e => e.area_id === a.area_id).length;
+    const r = h('div', 'auto');
+    const name = h('input');
+    name.type = 'text'; name.value = a.name;
+    const rename = () => areaCall('POST', '/api/miniha/areas/' + encodeURIComponent(a.area_id), {name: name.value.trim()});
+    name.onkeydown = e => { if (e.key === 'Enter') { rename(); } };
+    const del = btn('Delete', () => { if (confirm(`Delete area "${a.name}"?`)) { areaCall('DELETE', '/api/miniha/areas/' + encodeURIComponent(a.area_id)); } }, 'danger');
+    r.append(name, h('span', 'when', `${nd} devices, ${ne} entities`), btn('Rename', rename), del);
+    box.appendChild(r);
+  }
+}
+
+async function areaCall(method, path, body) {
+  $('#areaerr').textContent = '';
+  try { await api(method, path, body); $('#newarea').value = ''; await refresh(); renderAreas(true); } catch (e) { $('#areaerr').textContent = e.message; }
+}
+$('#addarea').onclick = () => { const n = $('#newarea').value.trim(); if (n) { areaCall('POST', '/api/miniha/areas', {name: n}); } };
+$('#newarea').onkeydown = e => { if (e.key === 'Enter') { $('#addarea').click(); } };
+
+// --- logbook ---
+let logSeq = 0;
+function localDay(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+async function renderLogbook(force) {
+  const day = $('#logday').value;
+  // A past day cannot change, so events do not refetch it.
+  if (!force && day && day !== localDay(new Date())) { return; }
+  let start, end;
+  if (day) {
+    const [y, m, d] = day.split('-').map(Number);
+    start = new Date(y, m - 1, d); end = new Date(y, m - 1, d + 1);
+  } else {
+    end = new Date(); start = new Date(end - 864e5);
+  }
+  const seq = ++logSeq;
+  let list;
+  try { list = await api('GET', `/api/logbook/${start.toISOString()}?end_time=${end.toISOString()}`); }
+  catch (e) {
+    if (seq !== logSeq) { return; }
+    $('#loglist').innerHTML = '';
+    $('#logmsg').textContent = e.status === 404 ? 'History is not recorded: the recorder is off, so there is no logbook.' : e.message;
+    return;
+  }
+  if (seq !== logSeq) { return; }
+  $('#logmsg').textContent = '';
+  $('#logrange').textContent = day ? start.toLocaleDateString() : 'last 24 hours';
+  const cap = 500;
+  list.sort((a, b) => Date.parse(b.when) - Date.parse(a.when));
+  const box = $('#loglist');
+  box.innerHTML = list.length ? '' : '<p class="empty">No entries in this period.</p>';
+  for (const x of list.slice(0, cap)) {
+    const r = h('div', 'log');
+    const t = new Date(x.when);
+    r.innerHTML = `<time>${esc(day ? t.toLocaleTimeString() : t.toLocaleString())}</time><span title="${esc(x.entity_id)}"><b>${esc(x.name || x.entity_id)}</b> ${esc(x.message || 'changed to ' + x.state)}</span>`;
+    box.appendChild(r);
+  }
+  if (list.length > cap) { box.appendChild(h('p', 'empty', `Showing the newest ${cap} of ${list.length}.`)); }
+}
+$('#logday').max = localDay(new Date());
+$('#logday').onchange = () => renderLogbook(true);
+$('#logtoday').onclick = () => { $('#logday').value = ''; renderLogbook(true); };
+
+// --- settings ---
+let statusAt = 0;
+async function renderStatus(force) {
+  if (!force && Date.now() - statusAt < 2000) { return; }
+  statusAt = Date.now();
+  let st;
+  try { st = await api('GET', '/api/miniha/status'); } catch (e) { $('#statusbox').textContent = e.message; return; }
+  const rows = [['Version', st.version], ['Uptime', fmtUptime(st.uptime_seconds)], ['Entities', st.entities], ['Devices', st.devices]];
+  for (const [name, o] of Object.entries(st.mqtt || {})) { rows.push(['MQTT ' + name, kv(o)]); }
+  rows.push(['Memory', `heap ${mib(st.heap_bytes)}, system ${mib(st.sys_bytes)}, ${st.goroutines} goroutines`]);
+  const known = ['version', 'uptime_seconds', 'entities', 'devices', 'mqtt', 'heap_bytes', 'sys_bytes', 'goroutines'];
+  for (const [k, v] of Object.entries(st)) { if (!known.includes(k)) { rows.push([k[0].toUpperCase() + k.slice(1).replace(/_/g, ' '), v && typeof v === 'object' ? kv(v) : v]); } }
+  $('#statusbox').innerHTML = rows.map(([k, v]) => `<div class="row"><span class="name">${esc(k)}</span><span class="val wrap">${esc(v)}</span></div>`).join('');
+}
+
+async function renderTokens() {
+  let list;
+  try { list = await api('GET', '/api/miniha/tokens'); } catch (e) { $('#toklist').textContent = e.message; return; }
+  const box = $('#toklist');
+  box.innerHTML = list.length ? '' : '<p class="empty">No tokens yet.</p>';
+  for (const t of list) {
+    const r = h('div', 'auto');
+    r.innerHTML = `<span class="name">${esc(t.name)}</span><span class="when">created ${esc(new Date(t.created_at).toLocaleDateString())}, ${t.last_used_at ? 'used ' + esc(new Date(t.last_used_at).toLocaleString()) : 'never used'}</span>`;
+    r.appendChild(btn('Delete', async () => {
+      if (!confirm(`Delete token "${t.name}"? Anything using it stops working.`)) { return; }
+      try { await api('DELETE', '/api/miniha/tokens/' + encodeURIComponent(t.id)); renderTokens(); } catch (e) { $('#tokerr').textContent = e.message; }
+    }, 'danger'));
+    box.appendChild(r);
+  }
+}
+
+$('#tokadd').onclick = async () => {
+  const name = $('#tokname').value.trim();
+  $('#tokerr').textContent = '';
+  if (!name) { $('#tokerr').textContent = 'Give the token a name'; return; }
+  try {
+    const t = await api('POST', '/api/miniha/tokens', {name});
+    $('#tokname').value = '';
+    const box = $('#tokreveal');
+    box.innerHTML = '<div class="reveal"><div>Copy this token now. It is shown only once.</div><div class="bar"><input type="text" readonly><button class="press">Copy</button><button class="press">Done</button></div></div>';
+    const [inp] = box.getElementsByTagName('input');
+    const [copy, done] = box.getElementsByTagName('button');
+    inp.value = t.token; inp.select();
+    copy.onclick = () => { inp.select(); document.execCommand('copy'); copy.textContent = 'Copied'; };
+    done.onclick = () => { box.innerHTML = ''; };
+    renderTokens();
+  } catch (e) { $('#tokerr').textContent = e.message; }
+};
+$('#tokname').onkeydown = e => { if (e.key === 'Enter') { $('#tokadd').click(); } };
+
+async function renderDiscovered() {
+  let list;
+  try { list = await api('GET', '/api/miniha/discovered'); } catch (e) { $('#disclist').textContent = e.message; return; }
+  const box = $('#disclist');
+  box.innerHTML = list.length ? '' : '<p class="empty">Nothing found yet.</p>';
+  for (const d of list.sort((a, b) => (a.integrated ? 1 : 0) - (b.integrated ? 1 : 0) || String(a.name).localeCompare(String(b.name)))) {
+    const r = h('div', 'disc');
+    const addr = (d.addrs || []).length ? d.addrs.join(', ') : d.host;
+    r.innerHTML = `<b>${esc(d.name)}</b><span class="badge${d.integrated ? ' ok' : ''}">${d.integrated ? 'integrated' : 'not integrated'}</span>
+      <small>${esc([d.kind, d.model].filter(Boolean).join(' / '))}${d.kind || d.model ? ' - ' : ''}${esc(addr)}${d.port ? ':' + esc(d.port) : ''}${d.service ? ' (' + esc(d.service) + ')' : ''}</small>${d.hint ? `<small>${esc(d.hint)}</small>` : ''}`;
+    box.appendChild(r);
+  }
+}
+
+// --- charts (shared by the History view and dashboard cards) ---
+const hcache = new Map();
+function tms(v) { return typeof v === 'number' ? (v < 1e11 ? v * 1000 : v) : Date.parse(v); }
+function r2(v) { return +v.toFixed(2); }
+function fmtAxis(t, span) {
+  const d = new Date(t);
+  return span > 36e5 * 36 ? d.toLocaleDateString([], {month: 'short', day: 'numeric'}) : d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+}
+
+// Several graphs asking for the same range within a minute share one request.
+function histLoad(ids, span, fresh) {
+  const key = ids.join(',') + '|' + span;
+  const c = hcache.get(key);
+  if (!fresh && c && Date.now() - c.t < 60000) { return c.p; }
+  const end = new Date(), start = new Date(end - span);
+  const p = api('GET', `/api/history/period/${start.toISOString()}?filter_entity_id=${ids.map(encodeURIComponent).join(',')}&end_time=${end.toISOString()}&minimal_response`)
+    .then(res => {
+      const m = new Map();
+      for (const l of res) { if (l.length) { m.set(l[0].entity_id, l); } }
+      return {m, t0: +start, t1: +end};
+    });
+  hcache.set(key, {t: Date.now(), p});
+  p.catch(() => hcache.delete(key));
+  return p;
+}
+
+function series(list, t0, t1) {
+  const ev = list.map(x => [Math.max(tms(x.last_changed || x.last_updated), t0), x.state]).filter(p => isFinite(p[0]));
+  const real = ev.filter(p => p[1] !== 'unavailable' && p[1] !== 'unknown');
+  const numeric = real.length > 0 && real.every(p => isNum(p[1]));
+  const pts = numeric ? real.map(p => [p[0], +p[1]]) : [];
+  if (pts.length) { pts.push([t1, pts[pts.length - 1][1]]); }
+  return {numeric, pts, segs: ev.map((p, i) => [p[0], i + 1 < ev.length ? ev[i + 1][0] : t1, p[1]])};
+}
+
+function lineChart(host, pts, t0, t1, o) {
+  if (!pts.length) { host.textContent = 'No data in this period.'; return; }
+  const unit = o.unit ? ' ' + o.unit : '', band = o.band || [];
+  const W = host.clientWidth || 600, H = o.height || 150, L = 44, R = 8, T = 6, B = 18;
+  let lo = Infinity, hi = -Infinity;
+  pts.forEach((p, i) => {
+    lo = Math.min(lo, p[1], band[i] ? band[i][0] : Infinity);
+    hi = Math.max(hi, p[1], band[i] ? band[i][1] : -Infinity);
+  });
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R);
+  const y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const f = v => v.toFixed(1);
+  let g = '';
+  for (let i = 0; i < 3; i++) {
+    const v = lo + (hi - lo) * i / 2;
+    g += `<line x1="${L}" x2="${W - R}" y1="${f(y(v))}" y2="${f(y(v))}" stroke="currentColor" opacity=".2"/><text x="${L - 4}" y="${f(y(v) + 3)}" text-anchor="end">${r2(v)}</text>`;
+  }
+  for (let i = 0; i < 4; i++) {
+    const t = t0 + (t1 - t0) * i / 3;
+    g += `<text x="${f(x(t))}" y="${H - 4}" text-anchor="${['start', 'middle', 'middle', 'end'][i]}">${esc(fmtAxis(t, t1 - t0))}</text>`;
+  }
+  const bp = pts.map((p, i) => band[i] ? [p[0], band[i]] : null).filter(Boolean);
+  const area = bp.length > 1 ? `<polygon fill="currentColor" opacity=".18" points="${bp.map(b => f(x(b[0])) + ',' + f(y(b[1][1]))).concat(bp.slice().reverse().map(b => f(x(b[0])) + ',' + f(y(b[1][0])))).join(' ')}"/>` : '';
+  const line = pts.length > 1
+    ? `<polyline fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" points="${pts.map(p => f(x(p[0])) + ',' + f(y(p[1]))).join(' ')}"/>`
+    : `<circle cx="${f(x(pts[0][0]))}" cy="${f(y(pts[0][1]))}" r="2.5" fill="currentColor"/>`;
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" font-size="10" fill="currentColor"><g>${g}</g><g style="color:var(--accent)">${area}${line}</g><line class="cur" y1="${T}" y2="${H - B}" stroke="currentColor" opacity=".5" style="display:none"/><circle class="dot" r="3.5" style="display:none;fill:var(--accent)"/></svg><div class="tip"></div>`;
+  const svg = host.firstChild, tip = host.lastChild, cur = svg.querySelector('.cur'), dot = svg.querySelector('.dot');
+  const show = e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width;
+    let best = 0;
+    for (let i = 1; i < pts.length; i++) { if (Math.abs(x(pts[i][0]) - px) < Math.abs(x(pts[best][0]) - px)) { best = i; } }
+    const p = pts[best], b = band[best], X = x(p[0]);
+    cur.setAttribute('x1', X); cur.setAttribute('x2', X);
+    dot.setAttribute('cx', X); dot.setAttribute('cy', y(p[1]));
+    cur.style.display = dot.style.display = '';
+    tip.textContent = r2(p[1]) + unit + (b ? ` (min ${r2(b[0])}, max ${r2(b[1])})` : '') + ' - ' + new Date(p[0]).toLocaleString();
+    tip.style.display = 'block';
+    tip.style.left = Math.max(0, Math.min(X * r.width / W - tip.offsetWidth / 2, r.width - tip.offsetWidth)) + 'px';
+  };
+  svg.onpointerdown = svg.onpointermove = show;
+  svg.onpointerleave = () => { tip.style.display = 'none'; cur.style.display = dot.style.display = 'none'; };
+}
+
+// Fixed colors for the usual states, the rest takes turns from a palette.
+const SCOL = {on: '#f59e0b', off: '#9ca3af', open: '#f59e0b', closed: '#9ca3af', home: '#16a34a', not_home: '#6b7280', unavailable: '#d1d5db', unknown: '#e5e7eb'};
+const PAL = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#0891b2', '#db2777', '#65a30d', '#ea580c'];
+
+function timeline(host, segs, t0, t1) {
+  if (!segs.length) { host.textContent = 'No data in this period.'; return; }
+  const W = host.clientWidth || 600, col = {};
+  let n = 0;
+  const color = s => col[s] || (col[s] = SCOL[s] || PAL[n++ % PAL.length]);
+  const x = t => 4 + (t - t0) / (t1 - t0) * (W - 8);
+  let g = '';
+  for (const [a, b, s] of segs) {
+    if (b > a) { g += `<rect x="${x(a).toFixed(1)}" width="${Math.max(1, x(b) - x(a)).toFixed(1)}" height="22" style="fill:${color(s)}"><title>${esc(s)}: ${esc(new Date(a).toLocaleString())} - ${esc(new Date(b).toLocaleString())}</title></rect>`; }
+  }
+  host.innerHTML = `<svg viewBox="0 0 ${W} 36" font-size="10" fill="currentColor">${g}<text x="4" y="34">${esc(fmtAxis(t0, t1 - t0))}</text><text x="${W - 4}" y="34" text-anchor="end">${esc(fmtAxis(t1, t1 - t0))}</text></svg><div class="legend">${Object.keys(col).map(s => `<span><i class="sw" style="background:${col[s]}"></i>${esc(s)}</span>`).join('')}</div>`;
+}
+
+function drawHist(host, list, t0, t1, unit) {
+  if (!list) { host.textContent = 'No data in this period.'; return; }
+  const sr = series(list, t0, t1);
+  if (sr.numeric) { lineChart(host, sr.pts, t0, t1, {unit}); } else { timeline(host, sr.segs, t0, t1); }
+}
+
+function histFail(hosts, e) {
+  if (e.message === 'unauthorized') { return; }
+  for (const host of hosts) { host.textContent = e.status === 404 ? 'The recorder is off, so there is no history.' : e.message; }
+}
+
+// --- tap actions and markdown (dashboard) ---
+const TOGGLE = {button: ['button', 'press'], input_button: ['input_button', 'press'], scene: ['scene', 'turn_on'], script: ['script', 'turn_on']};
+function toggleCall(id) {
+  const d = domain(id), st = byState[id] ? byState[id].state : '';
+  let t = TOGGLE[d] || [d, 'toggle'];
+  if (d === 'lock') { t = ['lock', st === 'locked' ? 'unlock' : 'lock']; }
+  if (d === 'cover') { t = ['cover', st === 'closed' ? 'open_cover' : 'close_cover']; }
+  return api('POST', `/api/services/${t[0]}/${t[1]}`, {entity_id: id}).then(refresh);
+}
+
+async function tap(ta, ent) {
+  const act2 = ta.action || (ent ? 'toggle' : 'none');
+  if (act2 === 'call-service' || act2 === 'perform-action') {
+    const sv = String(ta.service || ta.perform_action || '').split('.');
+    if (sv.length !== 2 || !sv[0] || !sv[1]) { throw new Error('Bad service: ' + (ta.service || ta.perform_action)); }
+    await api('POST', `/api/services/${sv[0]}/${sv[1]}`, Object.assign({}, ta.service_data || ta.data, ta.target));
+    await refresh();
+  } else if (act2 === 'toggle') {
+    const id = (ta.target && ta.target.entity_id) || ent;
+    if (typeof id !== 'string') { throw new Error('Toggle needs one entity'); }
+    await toggleCall(id);
+  } else if (act2 === 'url' && safeUrl(ta.url_path)) {
+    open(ta.url_path, '_blank', 'noopener');
+  }
+}
+
+// Only a small subset, applied after escaping everything, so card text can never inject markup.
+function md(src) {
+  src = String(src ?? '').replace(/\{\{\s*states\(\s*['"]([^'"]+)['"]\s*\)\s*\}\}/g, (m, id) => (byState[id] ? byState[id].state : 'unknown'));
+  const inline = t => esc(t)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<i>$2</i>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const out = [];
+  let list = null, para = [];
+  const flush = () => {
+    if (para.length) { out.push('<p>' + para.map(inline).join('<br>') + '</p>'); para = []; }
+    if (list) { out.push('<ul>' + list.map(i => '<li>' + inline(i) + '</li>').join('') + '</ul>'); list = null; }
+  };
+  for (const line of src.split('\n')) {
+    let m;
+    if (!line.trim()) { flush(); }
+    else if ((m = /^\s*[-*+]\s+(.*)/.exec(line))) { if (para.length) { flush(); } (list = list || []).push(m[1]); }
+    else if ((m = /^#{1,6}\s+(.*)/.exec(line))) { flush(); out.push('<h3>' + inline(m[1]) + '</h3>'); }
+    else { if (list) { flush(); } para.push(line); }
+  }
+  flush();
+  return out.join('');
+}
+
+// --- dashboard (Lovelace subset) ---
+const EXAMPLE_DASH = `title: Home
+views:
+  - title: Overview
+    cards:
+      - type: entities
+        title: Lights
+        entities:
+          - light.living_room
+          - entity: switch.fan
+            name: Fan
+      - type: glance
+        entities:
+          - sensor.temperature
+          - sensor.humidity
+      - type: gauge
+        entity: sensor.temperature
+        min: 0
+        max: 40
+        severity:
+          green: 0
+          yellow: 28
+          red: 35
+      - type: history-graph
+        entities:
+          - sensor.temperature
+        hours_to_show: 24
+      - type: markdown
+        content: "**Welcome** home. See [the docs](https://www.home-assistant.io/dashboards/)."
+`;
+let dash = null, dashLoaded = false, dashMsg = '', dashAt = 0, dashTab = 0;
+let defaultView = 'overview';
+let camStamp = Date.now(), camT = null, tickT = null;
+
+async function loadDash() {
+  dashAt = Date.now();
+  try { dash = await api('GET', '/api/miniha/dashboard'); dashMsg = ''; }
+  catch (e) { dash = null; dashMsg = e.status === 404 || e.message === 'unauthorized' ? '' : e.message; }
+  dashLoaded = true;
+}
+
+function eitem(x) { return typeof x === 'string' ? {id: x} : {id: x.entity || x.entity_id, name: x.name, section: x.type === 'section' ? x.label : null}; }
+function unsup(type) { return h('div', 'unsup', 'Unsupported card: ' + type); }
+function imgUrl(u) { return /^https?:\/\//i.test(u || '') || /^\/(?!\/)/.test(u || '') ? u : ''; }
+function camUrl(id) { return '/api/camera_proxy/' + encodeURIComponent(id) + '?t=' + camStamp; }
+function titled(c) { const card = h('div', 'card'); if (c.title) { card.appendChild(h('h2', '', c.title)); } return card; }
+
+const CARDS = {
+  entities(c) {
+    const card = titled(c);
+    for (const x of c.entities || []) {
+      const it = eitem(x), s = byState[it.id];
+      if (it.section != null) { card.appendChild(h('h2', '', it.section)); }
+      else if (s) { card.appendChild(row(s, it.name)); }
+      else {
+        const r = h('div', 'row unavailable');
+        r.append(h('span', 'name', it.name || it.id), h('span', 'val', 'not found'));
+        card.appendChild(r);
+      }
+    }
+    return card;
+  },
+  glance(c) {
+    const card = titled(c), grid = h('div', 'glance');
+    for (const x of c.entities || []) {
+      const it = eitem(x), s = byState[it.id], a = (s && s.attributes) || {};
+      const t = h('div', 'tile');
+      t.append(h('div', 'n', it.name || a.friendly_name || it.id), h('div', 'v', s ? s.state + (a.unit_of_measurement ? ' ' + a.unit_of_measurement : '') : 'n/a'));
+      grid.appendChild(t);
+    }
+    card.appendChild(grid);
+    return card;
+  },
+  markdown(c) {
+    const card = titled(c), body = h('div', 'md');
+    body.innerHTML = md(c.content);
+    card.appendChild(body);
+    return card;
+  },
+  button(c) {
+    const card = h('div', 'card'), s = c.entity ? byState[c.entity] : null;
+    const b = h('button', 'press bigbtn' + (s && s.state === 'on' ? ' active' : ''));
+    b.appendChild(h('span', '', c.name || (s && s.attributes.friendly_name) || c.entity || 'Button'));
+    if (s) { b.appendChild(h('small', '', s.state)); }
+    b.onclick = () => tap(c.tap_action || {}, c.entity).catch(showErr);
+    card.appendChild(b);
+    return card;
+  },
+  'history-graph'(c) {
+    const card = titled(c), items = (c.entities || []).map(eitem).filter(it => it.id);
+    const hosts = new Map();
+    for (const it of items) {
+      const blk = h('div', 'hg'), s = byState[it.id];
+      blk.appendChild(h('div', 'n', it.name || (s && s.attributes.friendly_name) || it.id));
+      const host = h('div', 'chart');
+      blk.appendChild(host);
+      card.appendChild(blk);
+      hosts.set(it.id, host);
+    }
+    if (!items.length) { return card; }
+    histLoad(items.map(it => it.id), (+c.hours_to_show || 24) * 36e5).then(r => {
+      for (const [id, host] of hosts) { drawHist(host, r.m.get(id), r.t0, r.t1, byState[id] && byState[id].attributes.unit_of_measurement); }
+    }, e => histFail(hosts.values(), e));
+    return card;
+  },
+  'vertical-stack'(c) { return stack(c, 'vstack'); },
+  'horizontal-stack'(c) { return stack(c, 'hstack'); },
+  conditional(c) {
+    const ok = (c.conditions || []).every(k => {
+      const st = byState[k.entity] ? String(byState[k.entity].state) : 'unavailable';
+      return (k.state == null || st === String(k.state)) && (k.state_not == null || st !== String(k.state_not));
+    });
+    return ok && c.card ? cardEl(c.card) : null;
+  },
+  gauge(c) {
+    const s = byState[c.entity], card = h('div', 'card gauge'), a = (s && s.attributes) || {};
+    const min = +(c.min ?? 0), max = +(c.max ?? 100), v = s ? +s.state : NaN;
+    const name = h('div', 'n', c.name || a.friendly_name || c.entity || 'Gauge');
+    if (!isFinite(v)) { card.append(h('div', 'val', s ? s.state : 'not found'), name); return card; }
+    const fr = Math.min(1, Math.max(0, (v - min) / (max - min)));
+    const R = 70, cx = 90, cy = 85;
+    const pt = k => { const t = Math.PI * (1 - k); return (cx + R * Math.cos(t)).toFixed(1) + ' ' + (cy - R * Math.sin(t)).toFixed(1); };
+    // Severity: the highest threshold already reached picks the color.
+    let color = 'var(--accent)';
+    const sev = c.severity || {}, cols = {green: '#16a34a', yellow: '#f59e0b', red: '#dc2626'};
+    let reached = -Infinity;
+    for (const k of Object.keys(cols)) { if (sev[k] != null && +sev[k] <= v && +sev[k] >= reached) { reached = +sev[k]; color = cols[k]; } }
+    const arc = k => `<path d="M ${pt(0)} A ${R} ${R} 0 0 1 ${pt(k)}" fill="none" stroke-width="12" stroke-linecap="round"`;
+    card.innerHTML = `<svg viewBox="0 0 180 100">${arc(1)} stroke="currentColor" opacity=".15"/>${fr > 0 ? arc(fr) + ` style="stroke:${color}"/>` : ''}<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="20" font-weight="600" fill="currentColor">${esc(r2(v) + (c.unit || a.unit_of_measurement ? ' ' + (c.unit || a.unit_of_measurement) : ''))}</text><text x="20" y="98" text-anchor="middle" font-size="10" fill="#6b7280">${esc(min)}</text><text x="160" y="98" text-anchor="middle" font-size="10" fill="#6b7280">${esc(max)}</text></svg>`;
+    card.appendChild(name);
+    return card;
+  },
+  picture(c) {
+    const card = h('div', 'card'), u = imgUrl(c.image);
+    if (!u) { card.textContent = 'No usable image URL (http, https or an absolute path).'; return card; }
+    const img = h('img', 'pic');
+    img.src = u; img.alt = c.alt_text || '';
+    card.appendChild(img);
+    return card;
+  },
+  camera(c) {
+    const card = h('div', 'card'), s = byState[c.entity];
+    card.appendChild(h('h2', '', c.name || (s && s.attributes.friendly_name) || c.entity || 'Camera'));
+    if (!s) { card.appendChild(h('p', 'empty', 'Camera not found')); return card; }
+    const img = h('img', 'pic');
+    img.dataset.cam = c.entity; img.alt = 'No image from ' + c.entity; img.src = camUrl(c.entity);
+    card.appendChild(img);
+    return card;
+  },
+};
+
+function stack(c, cls) {
+  const d = h('div', cls);
+  for (const x of c.cards || []) { const e = cardEl(x); if (e) { d.appendChild(e); } }
+  return d;
+}
+
+function cardEl(c) {
+  const fn = c && typeof c === 'object' ? CARDS[c.type] : null;
+  if (!fn) { return unsup(c && c.type); }
+  try { return fn(c); } catch (e) { return h('div', 'unsup', 'Card error in ' + c.type + ': ' + e.message); }
+}
+
+function editLink(text) {
+  const a = h('a', '', text);
+  a.href = '#automations';
+  a.onclick = e => { e.preventDefault(); openFile('ui-lovelace.yaml'); };
+  return a;
+}
+
+function renderDashboard(force) {
+  if (!force && busy('#v-dashboard')) { return; }
+  const box = $('#v-dashboard');
+  box.innerHTML = '';
+  if (!dashLoaded) { box.appendChild(h('p', 'empty', 'Loading dashboard...')); return; }
+  if (!dash) {
+    const c = h('div', 'card');
+    c.innerHTML = dashMsg ? `<h2>Dashboard</h2><p class="errtxt">${esc(dashMsg)}</p>` : `<h2>No dashboard yet</h2><p>Create <b>ui-lovelace.yaml</b> to build one from cards. Example:</p><pre class="example">${esc(EXAMPLE_DASH)}</pre>`;
+    c.appendChild(editLink(dashMsg ? 'Edit ui-lovelace.yaml' : 'Create dashboard'));
+    box.appendChild(c);
+    camSync();
+    return;
+  }
+  const views = dash.views || [];
+  dashTab = Math.min(dashTab, Math.max(0, views.length - 1));
+  const bar = h('div', 'bar');
+  bar.style.marginTop = '0';
+  bar.append(h('b', '', dash.title || 'Dashboard'), editLink('Edit dashboard'));
+  box.appendChild(bar);
+  if (views.length > 1) {
+    const tabs = h('div', 'tabs');
+    views.forEach((v, i) => {
+      const b = h('button', i === dashTab ? 'active' : '', v.title || v.path || 'View ' + (i + 1));
+      b.onclick = () => { dashTab = i; renderDashboard(true); };
+      tabs.appendChild(b);
+    });
+    box.appendChild(tabs);
+  }
+  const v = views[dashTab] || {};
+  const grid = h('div', 'grid');
+  for (const c of v.cards || (v.sections || []).flatMap(s => s.cards || [])) { const e = cardEl(c); if (e) { grid.appendChild(e); } }
+  if (!grid.children.length) { grid.appendChild(h('p', 'empty', 'This view has no cards.')); }
+  box.appendChild(grid);
+  camSync();
+}
+
+// Camera snapshots are the one poll: only while the dashboard is on screen.
+function camSync() {
+  const any = view === 'dashboard' && !!document.querySelector('#v-dashboard img[data-cam]');
+  if (any && !camT) { camT = setInterval(camTick, 10000); }
+  else if (!any && camT) { clearInterval(camT); camT = null; }
+}
+function camTick() {
+  if (document.hidden || view !== 'dashboard') { return; }
+  camStamp = Date.now();
+  document.querySelectorAll('#v-dashboard img[data-cam]').forEach(i => { i.src = camUrl(i.dataset.cam); });
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { camTick(); tickRun(); } });
+
+// A running timer counts down once a second in the browser; no request is involved.
+function tickSync() {
+  const any = !!document.querySelector('[data-finish]');
+  if (any && !tickT) { tickT = setInterval(tickRun, 1000); }
+  else if (!any && tickT) { clearInterval(tickT); tickT = null; }
+}
+function tickRun() {
+  if (document.hidden) { return; }
+  document.querySelectorAll('[data-finish]').forEach(e => { e.textContent = 'active ' + fmtDur((Date.parse(e.dataset.finish) - Date.now()) / 1000); });
+}
+
+// --- history view ---
+const RANGES = {'6 h': 6, '24 h': 24, '7 d': 168, '30 d': 720};
+let histSel = [], histRange = '24 h', histAt = 0;
+try {
+  const j = JSON.parse(localStorage.getItem('miniha.history') || '{}');
+  if (Array.isArray(j.sel)) { histSel = j.sel.filter(x => typeof x === 'string'); }
+  if (RANGES[j.range]) { histRange = j.range; }
+} catch (e) { /* storage blocked or garbled: start with the defaults */ }
+function histSave() {
+  try { localStorage.setItem('miniha.history', JSON.stringify({sel: histSel, range: histRange})); } catch (e) { /* private window: the choice lasts until reload */ }
+}
+
+function showHistoryFor(id) {
+  histSel = [id];
+  histSave();
+  if (location.hash === '#history') { renderHistory(true); } else { location.hash = '#history'; }
+}
+
+function histAdd() {
+  const inp = $('#histadd'), id = inp.value.trim();
+  if (!byState[id] && !byEntity[id]) { return; }
+  if (!histSel.includes(id)) { histSel.push(id); histSave(); }
+  inp.value = '';
+  renderHistory(true);
+}
+$('#histaddbtn').onclick = histAdd;
+$('#histadd').onchange = histAdd;
+// Choosing a suggestion from the list fires an input event without inputType; typing does not add.
+$('#histadd').oninput = e => { if (e.inputType === undefined || e.inputType === 'insertReplacementText') { histAdd(); } };
+
+async function renderHistory(force) {
+  if (!force && (Date.now() - histAt < 30000 || busy('#v-history'))) { return; }
+  histAt = Date.now();
+  const bar = $('#histrange');
+  bar.innerHTML = '';
+  for (const name of Object.keys(RANGES)) {
+    bar.appendChild(btn(name, () => { histRange = name; histSave(); renderHistory(true); }, name === histRange ? 'active' : ''));
+  }
+  const ids = new Set([...states.map(s => s.entity_id), ...registry.entities.map(e => e.entity_id)]);
+  $('#histents').innerHTML = [...ids].sort().filter(id => !histSel.includes(id)).map(id => `<option value="${esc(id)}">${esc(byState[id] ? byState[id].attributes.friendly_name || '' : '')}</option>`).join('');
+  const chips = $('#histchips');
+  chips.innerHTML = '';
+  for (const id of histSel) {
+    const c = h('span', 'chip', id);
+    const x = h('button', '', 'x');
+    x.title = 'Remove';
+    x.onclick = () => { histSel = histSel.filter(i => i !== id); histSave(); renderHistory(true); };
+    c.appendChild(x);
+    chips.appendChild(c);
+  }
+  const out = $('#histout');
+  out.innerHTML = '';
+  $('#histmsg').textContent = '';
+  if (!histSel.length) { out.innerHTML = '<p class="empty">Add entities above to see their history.</p>'; return; }
+  const hours = RANGES[histRange], span = hours * 36e5;
+  const hosts = new Map();
+  for (const id of histSel) {
+    const s = byState[id], card = h('div', 'card');
+    card.innerHTML = `<h2>${esc((s && s.attributes.friendly_name) || id)}<small>${esc(id)}${s ? ' - now ' + esc(s.state + (s.attributes.unit_of_measurement ? ' ' + s.attributes.unit_of_measurement : '')) : ''}</small></h2>`;
+    const host = h('div', 'chart', 'Loading...');
+    card.appendChild(host);
+    out.appendChild(card);
+    hosts.set(id, host);
+  }
+  // Long ranges of recorded sensors come from the hourly/daily statistics, which keep min and max.
+  const statIds = hours > 24 ? histSel.filter(id => byState[id] && byState[id].attributes.state_class) : [];
+  const histIds = histSel.filter(id => !statIds.includes(id));
+  const unit = id => (byState[id] && byState[id].attributes.unit_of_measurement) || '';
+  if (histIds.length) {
+    histLoad(histIds, span, true).then(r => {
+      for (const id of histIds) { drawHist(hosts.get(id), r.m.get(id), r.t0, r.t1, unit(id)); }
+    }, e => histFail(histIds.map(id => hosts.get(id)), e));
+  }
+  if (statIds.length) {
+    const end = new Date(), start = new Date(end - span);
+    api('GET', `/api/miniha/statistics?statistic_ids=${statIds.map(encodeURIComponent).join(',')}&start=${start.toISOString()}&end=${end.toISOString()}&period=${hours <= 168 ? 'hour' : 'day'}`).then(res => {
+      for (const id of statIds) {
+        const rows = (res[id] || []).filter(r => isNum(r.mean ?? r.state));
+        const pts = rows.map(r => [tms(r.start), +(r.mean ?? r.state)]);
+        const band = rows.map(r => (isNum(r.min) && isNum(r.max) ? [+r.min, +r.max] : null));
+        if (!pts.length) { hosts.get(id).textContent = 'No statistics recorded for this period yet.'; } else { lineChart(hosts.get(id), pts, +start, +end, {unit: unit(id), band}); }
+      }
+    }, e => histFail(statIds.map(id => hosts.get(id)), e));
+  }
+}
+
+// --- notifications ---
+let notifs = [], notifOpen = false, notifOff = false;
+
+async function loadNotifs() {
+  try { notifs = await api('GET', '/api/miniha/notifications'); notifOff = false; }
+  catch (e) {
+    if (e.message === 'unauthorized') { return; }
+    // 404 means this server has no notifications: hide the bell instead of complaining.
+    notifs = []; notifOff = true;
+  }
+  drawNotifs();
+}
+
+function notifCall(method, path) { api(method, path).then(loadNotifs).catch(showErr); }
+
+function drawNotifs() {
+  $('#bell').style.display = notifOff ? 'none' : '';
+  const n = $('#bellcount');
+  n.textContent = notifs.length;
+  n.style.display = notifs.length ? '' : 'none';
+  const p = $('#notif');
+  p.style.display = notifOpen && !notifOff ? '' : 'none';
+  if (p.style.display) { return; }
+  p.innerHTML = '';
+  if (!notifs.length) { p.appendChild(h('p', 'empty', 'No notifications.')); return; }
+  const top = h('div', 'bar');
+  top.append(h('b', '', 'Notifications'), btn('Dismiss all', () => notifCall('DELETE', '/api/miniha/notifications')));
+  p.appendChild(top);
+  for (const x of notifs) {
+    const d = h('div', 'nitem');
+    d.innerHTML = `<b>${esc(x.title || 'Notification')}</b><time>${esc(x.created_at ? new Date(x.created_at).toLocaleString() : '')}</time><div class="md">${md(x.message)}</div>`;
+    d.appendChild(btn('Dismiss', () => notifCall('DELETE', '/api/miniha/notifications/' + encodeURIComponent(x.notification_id))));
+    p.appendChild(d);
+  }
+}
+$('#bell').onclick = () => { notifOpen = !notifOpen; drawNotifs(); };
+addEventListener('click', e => { if (notifOpen && !e.target.closest('#notif, #bell')) { notifOpen = false; drawNotifs(); } });
+addEventListener('keydown', e => { if (e.key === 'Escape' && notifOpen) { notifOpen = false; drawNotifs(); } });
+
+// --- views and routing ---
+function viewEl(v) { return v === 'overview' ? $('#main') : $('#v-' + v); }
+
+function renderView(force) {
+  switch (view) {
+    case 'dashboard': renderDashboard(force); break;
+    case 'overview': renderOverview(); break;
+    case 'automations': renderAutomations(); break;
+    case 'devices': renderDevices(force); break;
+    case 'entities': renderEntities(force); break;
+    case 'areas': renderAreas(force); break;
+    case 'history': renderHistory(force); break;
+    case 'logbook': renderLogbook(force); break;
+    case 'settings': renderStatus(force); break;
+  }
+  tickSync();
+}
+
+function showView(v) {
+  view = v;
+  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === v));
+  for (const name of VIEWS) { viewEl(name).style.display = name === v ? '' : 'none'; }
+  if (v !== 'settings') { $('#tokreveal').innerHTML = ''; }
+  if (!started) { return; }
+  renderView(true);
+  if (v === 'automations') { loadFile(); }
+  if (v === 'settings') { renderTokens(); renderDiscovered(); }
+  if (v === 'dashboard' && Date.now() - dashAt > 2000) { loadDash().then(() => { if (view === 'dashboard') { renderDashboard(true); } }); }
+  camSync();
+}
+
+function route() {
+  const hash = location.hash.replace(/^#/, '');
+  kiosk = hash === 'kiosk';
+  document.body.classList.toggle('kiosk', kiosk);
+  showView(kiosk ? 'overview' : (VIEWS.includes(hash) ? hash : defaultView));
+}
+addEventListener('hashchange', route);
+
+function reindex() {
+  byEntity = Object.fromEntries(registry.entities.map(e => [e.entity_id, e]));
+  byDevice = Object.fromEntries(registry.devices.map(d => [d.id, d]));
+  byArea = Object.fromEntries(registry.areas.map(a => [a.area_id, a]));
+  byState = Object.fromEntries(states.map(s => [s.entity_id, s]));
+}
+
+async function refresh() {
+  try {
+    const [reg, st] = await Promise.all([api('GET', '/api/miniha/registry'), api('GET', '/api/states')]);
+    registry = reg; states = st;
+    reindex();
+    setMeta(`${states.length} entities, ${reg.devices.length} devices`);
+    loadNotifs();
+    renderView(false);
+  } catch (e) { showErr(e); }
+}
+
+// Several events in quick succession (a device announcing ten entities)
+// collapse into one refresh, which redraws the active view.
+function scheduleRefresh() {
+  if (pending) { return; }
+  pending = setTimeout(() => { pending = null; refresh(); }, 150);
+}
+
+async function start() {
+  try { const c = await api('GET', '/api/config'); $('#title').textContent = c.location_name || 'MiniHA'; document.title = c.location_name || 'MiniHA'; } catch (e) { return; }
+  started = true;
+  await refresh();
+  // A dashboard file makes the dashboard the landing page; without one the overview stays.
+  await loadDash();
+  defaultView = dash ? 'dashboard' : 'overview';
+  route();
+  stream = new EventSource('/api/miniha/stream');
+  stream.onmessage = scheduleRefresh;
+  stream.onopen = () => { setMeta(`${states.length} entities, ${registry.devices.length} devices`); scheduleRefresh(); };
+  stream.onerror = () => { setMeta('connection lost, reconnecting', true); };
+}
+route();
+start();
+</script>
+</body>
+</html>

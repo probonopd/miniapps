@@ -1,0 +1,32 @@
+#!/bin/ksh
+#
+# OpenBSD rc.d script for MiniHA. Install to /etc/rc.d/miniha, then run
+# "rcctl enable miniha" and "rcctl start miniha".
+
+daemon="/usr/local/bin/miniha"
+daemon_flags="-data /var/lib/miniha run"
+daemon_user="miniha"
+daemon_logfile="/var/log/miniha.log"
+
+. /etc/rc.d/rc.subr
+
+# The hub is a plain foreground process, so it is started in the background
+# by rc.subr and runs as daemon_user.
+rc_bg=YES
+# The hub has no reload handler; a SIGHUP would just kill it.
+rc_reload=NO
+
+rc_pre()
+{
+	install -d -o ${daemon_user} -m 0750 /var/lib/miniha || return 1
+	install -o ${daemon_user} -m 0640 /dev/null ${daemon_logfile} || return 1
+}
+
+# rc.subr has no log redirection of its own; without this the hub's
+# output would go to the console and be lost at boot.
+rc_start()
+{
+	${rcexec} "${daemon} ${daemon_flags} >>${daemon_logfile} 2>&1"
+}
+
+rc_cmd $1

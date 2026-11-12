@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+# OpenRC service for MiniHA (Alpine, Gentoo). Install to /etc/init.d/miniha.
+# Logs go to /var/log/miniha.log; supervise-daemon restarts a crashed hub
+# the way systemd Restart=on-failure does.
+
+description="MiniHA home automation hub"
+command="/usr/local/bin/miniha"
+command_args="-data ${MINIHA_DIR:-/var/lib/miniha} run"
+command_user="miniha:miniha"
+supervisor="supervise-daemon"
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/miniha.log"
+error_log="/var/log/miniha.log"
+
+depend() {
+	need net
+	use dns
+}
+
+start_pre() {
+	checkpath --directory --owner miniha:miniha --mode 0750 "${MINIHA_DIR:-/var/lib/miniha}"
+	checkpath --file --owner miniha:miniha --mode 0640 /var/log/miniha.log
+}

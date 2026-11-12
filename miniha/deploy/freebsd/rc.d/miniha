@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# PROVIDE: miniha
+# REQUIRE: NETWORKING
+# KEYWORD: shutdown
+#
+# Install to /usr/local/etc/rc.d/miniha, then add miniha_enable="YES" to
+# /etc/rc.conf.
+
+. /etc/rc.subr
+
+name="miniha"
+rcvar="miniha_enable"
+
+load_rc_config $name
+
+: ${miniha_enable:="NO"}
+: ${miniha_user:="miniha"}
+: ${miniha_datadir:="/var/lib/miniha"}
+
+logfile="/var/log/miniha.log"
+pidfile="/var/run/${name}.pid"
+# daemon(8) owns the process: -P records daemon(8) itself, so stop reaches the
+# supervisor and does not just kill a child that -r would restart. -u drops
+# privileges, -r restarts after a crash, -o keeps the output.
+command="/usr/sbin/daemon"
+command_args="-P ${pidfile} -u ${miniha_user} -o ${logfile} -r /usr/local/bin/miniha -data ${miniha_datadir} run"
+
+start_precmd="miniha_prestart"
+
+miniha_prestart()
+{
+	install -d -o "${miniha_user}" -m 0750 "${miniha_datadir}" || return 1
+	install -o "${miniha_user}" -m 0640 /dev/null "${logfile}" || return 1
+}
+
+run_rc_command "$1"
