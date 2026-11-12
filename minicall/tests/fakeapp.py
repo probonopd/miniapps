@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Stands in for the Android app on a PC: serves the helper's sockaudio and
 # sockvideo sockets so that two helpers can call each other in a headless test.

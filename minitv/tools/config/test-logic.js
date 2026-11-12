@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Simon Peter
  *
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: MIT
  */
 // Unit tests for the pure parts of minitv-config.html (schedule logic and MQTT codec): node test-logic.js
 'use strict';

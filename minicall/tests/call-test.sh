@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Headless end-to-end test of the helper on this machine: two helpers (built by
 # helper/build.sh host) call each other over the LAN address with H.264 video

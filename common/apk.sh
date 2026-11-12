@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # The steps every mini app's build.sh shares, without the Android SDK: Java to dex with javac and D8, manifest and
 # resources with apktool, and a v1 signature (see sign.py) with the one key all mini apps share. One key, because

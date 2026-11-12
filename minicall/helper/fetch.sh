@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Downloads the helper's sources into helper/src (pinned by sources.sha256).
 # --pin writes sources.sha256 from what was downloaded (only after a version bump).

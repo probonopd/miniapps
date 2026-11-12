@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Install the display switch for minitv (cmd/screen via MQTT, "Bildschirm aus" by voice).
 #

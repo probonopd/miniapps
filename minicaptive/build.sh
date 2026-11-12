@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Build and sign minicaptive.apk without the Android SDK.
 # Needs: JDK 17+ (javac, jar), apktool with a framework installed, python3 + "cryptography", curl, zip.

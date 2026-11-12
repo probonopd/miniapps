@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Display off and on for minitv: while the flag file exists, the backlight is 0; afterwards it
 # gets back the level it had. Panel, touch and Android keep running, so playback, voice control

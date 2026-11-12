@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Simon Peter
  *
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: MIT
  */
 // Link smoke test for build-apm.sh: the exact feature set baresip's webrtc_aec uses.
 #include <cstdint>

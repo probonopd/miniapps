@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # A fake captive portal on this machine, to test minicaptive without a hotspot. Set on the device
 #   probe=http://THIS-PC:8099/generate_204

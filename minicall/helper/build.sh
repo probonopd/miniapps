@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Builds the baresip helper as one static musl binary with zig, no NDK:
 # a musl process cannot live inside the app's Dalvik process (wrong libc ABI),

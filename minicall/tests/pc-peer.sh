@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # A SIP video phone on this machine for tests against a device: the host helper
 # with fakeapp.py (test pattern camera in H.264, 440 Hz microphone). What it

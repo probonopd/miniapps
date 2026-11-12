@@ -17,7 +17,7 @@ calls (`cmd/call`).
 
 Everything is permissively licensed: baresip and libre (BSD-3), Opus (BSD-3), libvpx (BSD-3), OpenSSL 3.5
 (Apache-2.0), WebRTC audio processing (BSD-3) with abseil (Apache-2.0), the HiveMQ MQTT client (Apache-2.0),
-RxJava (Apache-2.0), and this code (BSD-2).
+RxJava (Apache-2.0), and this code (MIT).
 
 ## Setting up
 

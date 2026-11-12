@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Builds dropbear and dropbearkey as static binaries for armeabi-v7a, arm64-v8a or x86_64, no NDK: a statically linked
 # binary has no runtime dependency on Android's own libc (bionic), so a normal Linux cross

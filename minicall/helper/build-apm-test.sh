@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Links test/apm-test.cc statically against out/<arch>/prefix; runs it for host.
 set -euo pipefail

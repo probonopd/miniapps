@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # A small MQTT 3.1.1 broker for tests in the local network, so that call setup
 # (which carries IP addresses) never goes through a public broker. TCP on 1883

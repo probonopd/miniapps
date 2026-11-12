@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Browser-to-helper call test on this machine: runs the host helper with
 # fakeapp.py as its camera, microphone, screen and speaker, and serves

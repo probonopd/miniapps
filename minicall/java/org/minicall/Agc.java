@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Simon Peter
  *
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: MIT
  */
 package org.minicall;
 

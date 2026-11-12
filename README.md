@@ -30,7 +30,7 @@ name, for example `^minicall-`. Obtainium picks the APK for the device's process
   hardware where it helps (video coding, echo cancellation).
 - **No accounts, no paid servers.** Remote control and call setup go over an MQTT broker of your choice (a free one
   is enough); calls go directly between the devices.
-- **Permissive licenses throughout:** the apps under BSD-2-Clause, the libraries they use under BSD, MIT or Apache.
+- **Permissive licenses throughout:** the apps under MIT, the libraries they use under BSD, MIT or Apache.
 
 ## Working together
 

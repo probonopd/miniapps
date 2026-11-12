@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Downloads an app's build inputs listed in APPDIR/libs.txt into APPDIR/build/libs (once) and verifies them
 # against APPDIR/libs.sha256. G = Google Maven (AndroidX, Media3, R8/D8), M = Maven Central, U = a full URL.

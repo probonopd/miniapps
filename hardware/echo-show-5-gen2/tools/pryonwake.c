@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Simon Peter
  *
- * SPDX-License-Identifier: BSD-2-Clause OR MIT
+ * SPDX-License-Identifier: MIT
  */
 
 /*

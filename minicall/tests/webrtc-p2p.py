@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Device-to-device WebRTC on this machine: helper A offers (webrtc_offer), helper B
 # answers (webrtc_answer), A takes the answer (webrtc_remote), as two minicall

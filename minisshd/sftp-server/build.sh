@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Builds OpenSSH's sftp-server as a static armeabi-v7a, arm64-v8a or x86_64 binary, no NDK - same reasoning as
 # ../dropbear/build.sh. Built --without-openssl (sftp-server does no crypto of its own; that

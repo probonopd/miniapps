@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2026 Simon Peter
 #
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 #
 # Builds abseil-cpp and webrtc-audio-processing 1.3 (the "-1" API baresip's
 # webrtc_aec module uses) as static libraries into out/<arch>/prefix, with zig
