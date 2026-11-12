@@ -45,6 +45,13 @@ public final class CallService extends Service {
 	static final String EXTRA_TO = "to";
 	// Seen by the wake word service (echowake), which then gives up the microphone for the call.
 	private static final File IN_CALL = new File("/sdcard/minicall/in-call");
+	/**
+	 * minitv's "display off" request (cmd/screen, "Bildschirm aus"), which a root service on the Echo Show acts
+	 * on. A call needs the display: it is lit for the call and the request put back afterwards.
+	 */
+	private static final File SCREEN_OFF = new File("/sdcard/minitv/screen-off");
+	/** The display was off when the call in progress began. */
+	private boolean screenWasOff;
 	private static final int RING_MS = 2500;
 	private static final int NO_ANSWER_MS = 60000;
 	/** Answered but not connected after this long: ICE or DTLS will not get through, end it instead of hanging. */
@@ -606,6 +613,7 @@ public final class CallService extends Service {
 		main.removeCallbacks(noConnection);
 		main.removeCallbacks(endAfterBusy);
 		tones.stopTone();
+		restoreScreen();
 		// A watched device makes no sound at the end either.
 		if (state != State.IDLE && !(babyphone && audio.speakerSilent)) tones.startTone(ToneGenerator.TONE_PROP_PROMPT, 300);
 		endBabyphone();
@@ -615,9 +623,32 @@ public final class CallService extends Service {
 	}
 
 	private void set(State s, String st) {
+		// A babyphone leaves the display as it is: nothing on the watched device may change.
+		if (state == State.IDLE && s != State.IDLE && !babyphone) lightScreenForCall();
 		state = s;
 		status = st;
 		notifyListener();
+	}
+
+	private void lightScreenForCall() {
+		if (!SCREEN_OFF.exists()) return;
+		if (SCREEN_OFF.delete()) {
+			screenWasOff = true;
+			Log.i(TAG, "display on for the call");
+		} else {
+			Log.w(TAG, "cannot delete " + SCREEN_OFF + ": the display stays off during the call");
+		}
+	}
+
+	private void restoreScreen() {
+		if (!screenWasOff) return;
+		screenWasOff = false;
+		try {
+			if (!SCREEN_OFF.exists() && !SCREEN_OFF.createNewFile()) throw new java.io.IOException("not created");
+			Log.i(TAG, "display off again after the call");
+		} catch (java.io.IOException e) {
+			Log.w(TAG, "cannot recreate " + SCREEN_OFF + ": " + e.getMessage());
+		}
 	}
 
 	private void notifyListener() {
